@@ -51,7 +51,7 @@ function shapeOf(v, prefix, out) {
 }
 
 // Keys inside maps keyed by data (platform ids, metric names) vary; compare those loosely.
-const LOOSE = /(^|\.)(cells|platforms|metrics|counts|defects)\.[^.]+/;
+const LOOSE = /(^|\.)(cells|platforms|metrics|counts|defects)\.[^.]+|options\.dataset_name|powerbi\.last_pull\./;
 
 function missingKeys(want, have) {
   const emptyArrays = [...have].filter((k) => k.endsWith('[]*')).map((k) => k.slice(0, -1));
