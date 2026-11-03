@@ -1,0 +1,9 @@
+node_modules/
+backend/data/*.db
+backend/data/*.db-*
+backend/data/fixtures/
+frontend/dist/
+.env
+*.log
+.DS_Store
+.gstack/
