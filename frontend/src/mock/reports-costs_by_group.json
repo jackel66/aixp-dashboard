@@ -1,0 +1,115 @@
+{
+ "id": "costs_by_group",
+ "title": "Costs by group",
+ "description": "Consumption and allocated seat spend per group.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "group",
+   "label": "Group",
+   "type": "text"
+  },
+  {
+   "key": "consumption_usd",
+   "label": "Consumption (USD)",
+   "type": "money"
+  },
+  {
+   "key": "seat_usd",
+   "label": "Seat, allocated (USD)",
+   "type": "money"
+  },
+  {
+   "key": "total_usd",
+   "label": "Total (USD)",
+   "type": "money"
+  },
+  {
+   "key": "share",
+   "label": "Share of spend",
+   "type": "pct"
+  },
+  {
+   "key": "users",
+   "label": "Active users",
+   "type": "number"
+  },
+  {
+   "key": "usd_per_user",
+   "label": "Spend per user (USD)",
+   "type": "money"
+  }
+ ],
+ "rows": [
+  {
+   "group": "GBS - L&C",
+   "consumption_usd": 72421,
+   "seat_usd": 11789,
+   "total_usd": 84210,
+   "share": 33.2,
+   "users": 112,
+   "usd_per_user": 752
+  },
+  {
+   "group": "GBS - GRM",
+   "consumption_usd": 61473,
+   "seat_usd": 10007,
+   "total_usd": 71480,
+   "share": 28.2,
+   "users": 96,
+   "usd_per_user": 745
+  },
+  {
+   "group": "GBS - CIB",
+   "consumption_usd": 57560,
+   "seat_usd": 9370,
+   "total_usd": 66930,
+   "share": 26.4,
+   "users": 88,
+   "usd_per_user": 761
+  },
+  {
+   "group": "GBS - OPS",
+   "consumption_usd": 26832,
+   "seat_usd": 4368,
+   "total_usd": 31200,
+   "share": 12.3,
+   "users": 54,
+   "usd_per_user": 578
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "GBS - L&C",
+   "GBS - GRM",
+   "GBS - CIB",
+   "GBS - OPS"
+  ],
+  "series": [
+   {
+    "label": "Total (USD)",
+    "data": [
+     84210,
+     71480,
+     66930,
+     31200
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": []
+}

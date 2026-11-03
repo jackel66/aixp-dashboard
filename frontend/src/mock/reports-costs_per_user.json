@@ -1,0 +1,109 @@
+{
+ "id": "costs_per_user",
+ "title": "Cost per user",
+ "description": "Spend per active user on each platform.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "platform",
+   "label": "Platform",
+   "type": "platform"
+  },
+  {
+   "key": "active_users",
+   "label": "Active users",
+   "type": "number"
+  },
+  {
+   "key": "usd",
+   "label": "Spend (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_per_user",
+   "label": "Spend per user (USD)",
+   "type": "money"
+  },
+  {
+   "key": "consumption_per_user",
+   "label": "Consumption per user",
+   "type": "units"
+  }
+ ],
+ "rows": [
+  {
+   "platform": "anthropic",
+   "active_users": 200,
+   "usd": 148028,
+   "usd_per_user": 740,
+   "consumption_per_user": {
+    "value": 113356375,
+    "unit": "tokens"
+   }
+  },
+  {
+   "platform": "openai",
+   "active_users": 162,
+   "usd": 81161,
+   "usd_per_user": 501,
+   "consumption_per_user": {
+    "value": 91309864,
+    "unit": "tokens"
+   }
+  },
+  {
+   "platform": "github",
+   "active_users": 352,
+   "usd": 29619,
+   "usd_per_user": 84,
+   "consumption_per_user": {
+    "value": 1536,
+    "unit": "credits"
+   }
+  },
+  {
+   "platform": "cowork",
+   "active_users": 90,
+   "usd": 29191,
+   "usd_per_user": 324,
+   "consumption_per_user": {
+    "value": 24709,
+    "unit": "credits"
+   }
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "Anthropic",
+   "OpenAI",
+   "GitHub Copilot",
+   "Copilot Cowork"
+  ],
+  "series": [
+   {
+    "label": "Spend per user (USD)",
+    "data": [
+     740,
+     501,
+     84,
+     324
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": []
+}

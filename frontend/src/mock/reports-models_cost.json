@@ -1,0 +1,168 @@
+{
+ "id": "models_cost",
+ "title": "Model cost",
+ "description": "Spend and consumption per model. Only platforms that report a model name appear.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "platform",
+   "label": "Platform",
+   "type": "platform"
+  },
+  {
+   "key": "model",
+   "label": "Model",
+   "type": "text"
+  },
+  {
+   "key": "usd",
+   "label": "Spend (USD)",
+   "type": "money"
+  },
+  {
+   "key": "consumption",
+   "label": "Consumption",
+   "type": "units"
+  },
+  {
+   "key": "requests",
+   "label": "Requests",
+   "type": "number"
+  },
+  {
+   "key": "users",
+   "label": "Active users",
+   "type": "number"
+  },
+  {
+   "key": "cost_per_million",
+   "label": "Cost per million tokens (USD)",
+   "type": "money"
+  },
+  {
+   "key": "share",
+   "label": "Share of spend",
+   "type": "pct"
+  }
+ ],
+ "rows": [
+  {
+   "platform": "anthropic",
+   "model": "claude-opus-5",
+   "usd": 61200,
+   "consumption": {
+    "value": 9100000000,
+    "unit": "tokens"
+   },
+   "requests": 412000,
+   "users": 118,
+   "cost_per_million": 6.73,
+   "share": 29.1
+  },
+  {
+   "platform": "anthropic",
+   "model": "claude-sonnet-5",
+   "usd": 52400,
+   "consumption": {
+    "value": 10300000000,
+    "unit": "tokens"
+   },
+   "requests": 860000,
+   "users": 171,
+   "cost_per_million": 5.09,
+   "share": 25.0
+  },
+  {
+   "platform": "anthropic",
+   "model": "claude-haiku-5",
+   "usd": 22400,
+   "consumption": {
+    "value": 3270000000,
+    "unit": "tokens"
+   },
+   "requests": 1210000,
+   "users": 94,
+   "cost_per_million": 6.85,
+   "share": 10.7
+  },
+  {
+   "platform": "openai",
+   "model": "gpt-5.4",
+   "usd": 41800,
+   "consumption": {
+    "value": 6200000000,
+    "unit": "tokens"
+   },
+   "requests": 540000,
+   "users": 121,
+   "cost_per_million": 6.74,
+   "share": 19.9
+  },
+  {
+   "platform": "openai",
+   "model": "gpt-5.4-mini",
+   "usd": 19300,
+   "consumption": {
+    "value": 5900000000,
+    "unit": "tokens"
+   },
+   "requests": 980000,
+   "users": 102,
+   "cost_per_million": 3.27,
+   "share": 9.2
+  },
+  {
+   "platform": "openai",
+   "model": "o-series-4",
+   "usd": 12860,
+   "consumption": {
+    "value": 2690000000,
+    "unit": "tokens"
+   },
+   "requests": 150000,
+   "users": 44,
+   "cost_per_million": 4.78,
+   "share": 6.1
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "claude-opus-5",
+   "claude-sonnet-5",
+   "claude-haiku-5",
+   "gpt-5.4",
+   "gpt-5.4-mini",
+   "o-series-4"
+  ],
+  "series": [
+   {
+    "label": "Spend (USD)",
+    "data": [
+     61200,
+     52400,
+     22400,
+     41800,
+     19300,
+     12860
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": [
+  "Cost per million tokens is spend divided by tokens, token platforms only."
+ ]
+}

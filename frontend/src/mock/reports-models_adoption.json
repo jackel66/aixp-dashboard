@@ -1,0 +1,229 @@
+{
+ "id": "models_adoption",
+ "title": "Model adoption",
+ "description": "Active users per week for the eight most used models.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "week",
+   "label": "Week",
+   "type": "text"
+  },
+  {
+   "key": "u_0",
+   "label": "claude-opus-5",
+   "type": "number"
+  },
+  {
+   "key": "u_1",
+   "label": "claude-sonnet-5",
+   "type": "number"
+  },
+  {
+   "key": "u_2",
+   "label": "claude-haiku-5",
+   "type": "number"
+  },
+  {
+   "key": "u_3",
+   "label": "gpt-5.4",
+   "type": "number"
+  },
+  {
+   "key": "u_4",
+   "label": "gpt-5.4-mini",
+   "type": "number"
+  },
+  {
+   "key": "u_5",
+   "label": "o-series-4",
+   "type": "number"
+  }
+ ],
+ "rows": [
+  {
+   "week": "7 Sep",
+   "u_0": 101,
+   "u_1": 50,
+   "u_2": 100,
+   "u_3": 53,
+   "u_4": 67,
+   "u_5": 56
+  },
+  {
+   "week": "14 Sep",
+   "u_0": 68,
+   "u_1": 66,
+   "u_2": 90,
+   "u_3": 113,
+   "u_4": 83,
+   "u_5": 53
+  },
+  {
+   "week": "21 Sep",
+   "u_0": 107,
+   "u_1": 73,
+   "u_2": 71,
+   "u_3": 69,
+   "u_4": 116,
+   "u_5": 97
+  },
+  {
+   "week": "28 Sep",
+   "u_0": 100,
+   "u_1": 74,
+   "u_2": 128,
+   "u_3": 113,
+   "u_4": 88,
+   "u_5": 116
+  },
+  {
+   "week": "5 Oct",
+   "u_0": 75,
+   "u_1": 67,
+   "u_2": 134,
+   "u_3": 88,
+   "u_4": 105,
+   "u_5": 130
+  },
+  {
+   "week": "12 Oct",
+   "u_0": 120,
+   "u_1": 89,
+   "u_2": 86,
+   "u_3": 97,
+   "u_4": 103,
+   "u_5": 123
+  },
+  {
+   "week": "19 Oct",
+   "u_0": 135,
+   "u_1": 135,
+   "u_2": 78,
+   "u_3": 79,
+   "u_4": 145,
+   "u_5": 140
+  },
+  {
+   "week": "26 Oct",
+   "u_0": 133,
+   "u_1": 100,
+   "u_2": 83,
+   "u_3": 114,
+   "u_4": 135,
+   "u_5": 98
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "line",
+  "labels": [
+   "7 Sep",
+   "14 Sep",
+   "21 Sep",
+   "28 Sep",
+   "5 Oct",
+   "12 Oct",
+   "19 Oct",
+   "26 Oct"
+  ],
+  "series": [
+   {
+    "label": "claude-opus-5",
+    "data": [
+     101,
+     68,
+     107,
+     100,
+     75,
+     120,
+     135,
+     133
+    ],
+    "platform": null
+   },
+   {
+    "label": "claude-sonnet-5",
+    "data": [
+     50,
+     66,
+     73,
+     74,
+     67,
+     89,
+     135,
+     100
+    ],
+    "platform": null
+   },
+   {
+    "label": "claude-haiku-5",
+    "data": [
+     100,
+     90,
+     71,
+     128,
+     134,
+     86,
+     78,
+     83
+    ],
+    "platform": null
+   },
+   {
+    "label": "gpt-5.4",
+    "data": [
+     53,
+     113,
+     69,
+     113,
+     88,
+     97,
+     79,
+     114
+    ],
+    "platform": null
+   },
+   {
+    "label": "gpt-5.4-mini",
+    "data": [
+     67,
+     83,
+     116,
+     88,
+     105,
+     103,
+     145,
+     135
+    ],
+    "platform": null
+   },
+   {
+    "label": "o-series-4",
+    "data": [
+     56,
+     53,
+     97,
+     116,
+     130,
+     123,
+     140,
+     98
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": []
+}

@@ -1,0 +1,229 @@
+{
+ "id": "platforms_seat_utilisation",
+ "title": "Seat utilisation",
+ "description": "Licensed seats against active people, per platform and month.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "platform",
+   "label": "Platform",
+   "type": "platform"
+  },
+  {
+   "key": "month",
+   "label": "Month",
+   "type": "text"
+  },
+  {
+   "key": "licensed_seats",
+   "label": "Licensed seats",
+   "type": "number"
+  },
+  {
+   "key": "active_people",
+   "label": "Active people",
+   "type": "number"
+  },
+  {
+   "key": "utilisation_pct",
+   "label": "Utilisation",
+   "type": "pct"
+  },
+  {
+   "key": "seat_usd",
+   "label": "Seat (USD)",
+   "type": "money"
+  },
+  {
+   "key": "consumption_usd",
+   "label": "Consumption (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_per_active",
+   "label": "Spend per active person (USD)",
+   "type": "money"
+  }
+ ],
+ "rows": [
+  {
+   "platform": "anthropic",
+   "month": "Aug 2026",
+   "licensed_seats": 230,
+   "active_people": 164,
+   "utilisation_pct": 71.3,
+   "seat_usd": 12000,
+   "consumption_usd": 95220,
+   "usd_per_active": 654
+  },
+  {
+   "platform": "anthropic",
+   "month": "Sep 2026",
+   "licensed_seats": 230,
+   "active_people": 178,
+   "utilisation_pct": 77.4,
+   "seat_usd": 12000,
+   "consumption_usd": 115624,
+   "usd_per_active": 717
+  },
+  {
+   "platform": "anthropic",
+   "month": "Oct 2026",
+   "licensed_seats": 230,
+   "active_people": 192,
+   "utilisation_pct": 83.5,
+   "seat_usd": 12000,
+   "consumption_usd": 136028,
+   "usd_per_active": 771
+  },
+  {
+   "platform": "openai",
+   "month": "Aug 2026",
+   "licensed_seats": 200,
+   "active_people": 133,
+   "utilisation_pct": 66.5,
+   "seat_usd": 7200,
+   "consumption_usd": 51773,
+   "usd_per_active": 443
+  },
+  {
+   "platform": "openai",
+   "month": "Sep 2026",
+   "licensed_seats": 200,
+   "active_people": 144,
+   "utilisation_pct": 72.0,
+   "seat_usd": 7200,
+   "consumption_usd": 62867,
+   "usd_per_active": 487
+  },
+  {
+   "platform": "openai",
+   "month": "Oct 2026",
+   "licensed_seats": 200,
+   "active_people": 156,
+   "utilisation_pct": 78.0,
+   "seat_usd": 7200,
+   "consumption_usd": 73961,
+   "usd_per_active": 520
+  },
+  {
+   "platform": "github",
+   "month": "Aug 2026",
+   "licensed_seats": 400,
+   "active_people": 289,
+   "utilisation_pct": 72.2,
+   "seat_usd": 7980,
+   "consumption_usd": 15147,
+   "usd_per_active": 80
+  },
+  {
+   "platform": "github",
+   "month": "Sep 2026",
+   "licensed_seats": 400,
+   "active_people": 313,
+   "utilisation_pct": 78.2,
+   "seat_usd": 7980,
+   "consumption_usd": 18393,
+   "usd_per_active": 84
+  },
+  {
+   "platform": "github",
+   "month": "Oct 2026",
+   "licensed_seats": 400,
+   "active_people": 338,
+   "utilisation_pct": 84.5,
+   "seat_usd": 7980,
+   "consumption_usd": 21639,
+   "usd_per_active": 88
+  },
+  {
+   "platform": "cowork",
+   "month": "Aug 2026",
+   "licensed_seats": 120,
+   "active_people": 74,
+   "utilisation_pct": 61.7,
+   "seat_usd": 11400,
+   "consumption_usd": 12454,
+   "usd_per_active": 322
+  },
+  {
+   "platform": "cowork",
+   "month": "Sep 2026",
+   "licensed_seats": 120,
+   "active_people": 80,
+   "utilisation_pct": 66.7,
+   "seat_usd": 11400,
+   "consumption_usd": 15122,
+   "usd_per_active": 332
+  },
+  {
+   "platform": "cowork",
+   "month": "Oct 2026",
+   "licensed_seats": 120,
+   "active_people": 86,
+   "utilisation_pct": 71.7,
+   "seat_usd": 11400,
+   "consumption_usd": 17791,
+   "usd_per_active": 339
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "line",
+  "labels": [
+   "Aug 2026",
+   "Sep 2026",
+   "Oct 2026"
+  ],
+  "series": [
+   {
+    "label": "Anthropic",
+    "data": [
+     71.3,
+     77.4,
+     83.5
+    ],
+    "platform": "anthropic"
+   },
+   {
+    "label": "OpenAI",
+    "data": [
+     66.5,
+     72.0,
+     78.0
+    ],
+    "platform": "openai"
+   },
+   {
+    "label": "GitHub Copilot",
+    "data": [
+     72.2,
+     78.2,
+     84.5
+    ],
+    "platform": "github"
+   },
+   {
+    "label": "Copilot Cowork",
+    "data": [
+     61.7,
+     66.7,
+     71.7
+    ],
+    "platform": "cowork"
+   }
+  ]
+ },
+ "notes": []
+}

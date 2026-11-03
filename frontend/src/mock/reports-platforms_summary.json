@@ -1,0 +1,166 @@
+{
+ "id": "platforms_summary",
+ "title": "Platform summary",
+ "description": "One row per platform: freshness, spend, consumption and seat use.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "platform",
+   "label": "Platform",
+   "type": "platform"
+  },
+  {
+   "key": "as_of",
+   "label": "As of",
+   "type": "date"
+  },
+  {
+   "key": "lag_days",
+   "label": "Lag (days)",
+   "type": "number"
+  },
+  {
+   "key": "consumption_usd",
+   "label": "Consumption (USD)",
+   "type": "money"
+  },
+  {
+   "key": "seat_usd",
+   "label": "Seat (USD)",
+   "type": "money"
+  },
+  {
+   "key": "total_usd",
+   "label": "Total (USD)",
+   "type": "money"
+  },
+  {
+   "key": "consumption",
+   "label": "Consumption",
+   "type": "units"
+  },
+  {
+   "key": "active_users",
+   "label": "Active users",
+   "type": "number"
+  },
+  {
+   "key": "usd_per_active_user",
+   "label": "Spend per active user (USD)",
+   "type": "money"
+  },
+  {
+   "key": "licensed_seats",
+   "label": "Licensed seats",
+   "type": "number"
+  },
+  {
+   "key": "seat_utilisation_pct",
+   "label": "Seat utilisation",
+   "type": "pct"
+  }
+ ],
+ "rows": [
+  {
+   "platform": "anthropic",
+   "as_of": "2026-10-29",
+   "lag_days": 0,
+   "consumption_usd": 136028,
+   "seat_usd": 12000,
+   "total_usd": 148028,
+   "consumption": {
+    "value": 22671275001,
+    "unit": "tokens"
+   },
+   "active_users": 200,
+   "usd_per_active_user": 740,
+   "licensed_seats": 230,
+   "seat_utilisation_pct": 87.0
+  },
+  {
+   "platform": "openai",
+   "as_of": "2026-10-29",
+   "lag_days": 0,
+   "consumption_usd": 73961,
+   "seat_usd": 7200,
+   "total_usd": 81161,
+   "consumption": {
+    "value": 14792198000,
+    "unit": "tokens"
+   },
+   "active_users": 162,
+   "usd_per_active_user": 501,
+   "licensed_seats": 200,
+   "seat_utilisation_pct": 81.0
+  },
+  {
+   "platform": "github",
+   "as_of": "2026-10-20",
+   "lag_days": 9,
+   "consumption_usd": 21639,
+   "seat_usd": 7980,
+   "total_usd": 29619,
+   "consumption": {
+    "value": 540970,
+    "unit": "credits"
+   },
+   "active_users": 352,
+   "usd_per_active_user": 84,
+   "licensed_seats": 400,
+   "seat_utilisation_pct": 88.0
+  },
+  {
+   "platform": "cowork",
+   "as_of": "2026-10-29",
+   "lag_days": 0,
+   "consumption_usd": 17791,
+   "seat_usd": 11400,
+   "total_usd": 29191,
+   "consumption": {
+    "value": 2223818,
+    "unit": "credits"
+   },
+   "active_users": 90,
+   "usd_per_active_user": 324,
+   "licensed_seats": 120,
+   "seat_utilisation_pct": 75.0
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "Anthropic",
+   "OpenAI",
+   "GitHub Copilot",
+   "Copilot Cowork"
+  ],
+  "series": [
+   {
+    "label": "Total (USD)",
+    "data": [
+     148028,
+     81161,
+     29619,
+     29191
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": [
+  "GitHub Copilot data stops at 20 Oct 2026, so its figures understate the range.",
+  "Tokens and credits are never summed across platforms."
+ ]
+}

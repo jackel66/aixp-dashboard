@@ -1,0 +1,205 @@
+{
+ "id": "platforms_monthly",
+ "title": "Platforms by month",
+ "description": "Monthly spend per platform on the selected basis, with the change from the previous month.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "month",
+   "label": "Month",
+   "type": "text"
+  },
+  {
+   "key": "usd_anthropic",
+   "label": "Anthropic (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_openai",
+   "label": "OpenAI (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_github",
+   "label": "GitHub Copilot (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_cowork",
+   "label": "Copilot Cowork (USD)",
+   "type": "money"
+  },
+  {
+   "key": "total",
+   "label": "Total (USD)",
+   "type": "money"
+  },
+  {
+   "key": "delta",
+   "label": "Change vs previous month",
+   "type": "delta"
+  }
+ ],
+ "rows": [
+  {
+   "month": "May 2026",
+   "usd_anthropic": 62000,
+   "usd_openai": 31000,
+   "usd_github": 12000,
+   "usd_cowork": 3000,
+   "total": 108000,
+   "delta": {
+    "now": 108000,
+    "prev": null,
+    "delta": null,
+    "pct": null
+   }
+  },
+  {
+   "month": "Jun 2026",
+   "usd_anthropic": 74000,
+   "usd_openai": 38000,
+   "usd_github": 14000,
+   "usd_cowork": 5000,
+   "total": 131000,
+   "delta": {
+    "now": 131000,
+    "prev": 108000,
+    "delta": 23000,
+    "pct": 21.3
+   }
+  },
+  {
+   "month": "Jul 2026",
+   "usd_anthropic": 88000,
+   "usd_openai": 47000,
+   "usd_github": 16000,
+   "usd_cowork": 8000,
+   "total": 159000,
+   "delta": {
+    "now": 159000,
+    "prev": 131000,
+    "delta": 28000,
+    "pct": 21.4
+   }
+  },
+  {
+   "month": "Aug 2026",
+   "usd_anthropic": 102000,
+   "usd_openai": 56000,
+   "usd_github": 19000,
+   "usd_cowork": 11000,
+   "total": 188000,
+   "delta": {
+    "now": 188000,
+    "prev": 159000,
+    "delta": 29000,
+    "pct": 18.2
+   }
+  },
+  {
+   "month": "Sep 2026",
+   "usd_anthropic": 121000,
+   "usd_openai": 66000,
+   "usd_github": 22000,
+   "usd_cowork": 15000,
+   "total": 224000,
+   "delta": {
+    "now": 224000,
+    "prev": 188000,
+    "delta": 36000,
+    "pct": 19.1
+   }
+  },
+  {
+   "month": "Oct 2026",
+   "usd_anthropic": 136000,
+   "usd_openai": 74000,
+   "usd_github": 21600,
+   "usd_cowork": 17800,
+   "total": 249400,
+   "delta": {
+    "now": 249400,
+    "prev": 224000,
+    "delta": 25400,
+    "pct": 11.3
+   }
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "stacked",
+  "labels": [
+   "May 2026",
+   "Jun 2026",
+   "Jul 2026",
+   "Aug 2026",
+   "Sep 2026",
+   "Oct 2026"
+  ],
+  "series": [
+   {
+    "label": "Anthropic",
+    "data": [
+     62000,
+     74000,
+     88000,
+     102000,
+     121000,
+     136000
+    ],
+    "platform": "anthropic"
+   },
+   {
+    "label": "OpenAI",
+    "data": [
+     31000,
+     38000,
+     47000,
+     56000,
+     66000,
+     74000
+    ],
+    "platform": "openai"
+   },
+   {
+    "label": "GitHub Copilot",
+    "data": [
+     12000,
+     14000,
+     16000,
+     19000,
+     22000,
+     21600
+    ],
+    "platform": "github"
+   },
+   {
+    "label": "Copilot Cowork",
+    "data": [
+     3000,
+     5000,
+     8000,
+     11000,
+     15000,
+     17800
+    ],
+    "platform": "cowork"
+   }
+  ]
+ },
+ "notes": [
+  "October 2026 is month to date (to 29 Oct)."
+ ]
+}

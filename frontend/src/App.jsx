@@ -15,6 +15,8 @@ import ModelsPage from './pages/ModelsPage.jsx';
 import UsersPage from './pages/UsersPage.jsx';
 import DataQualityPage from './pages/DataQualityPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import ReportsPage from './pages/ReportsPage.jsx';
+import ReportPage from './pages/ReportPage.jsx';
 
 function Placeholder({ title }) {
   return (
@@ -44,6 +46,8 @@ export default function App() {
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/data-quality" element={<DataQualityPage />} />
                 <Route path="/settings/:section?" element={<SettingsPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/reports/:id" element={<ReportPage />} />
                 {/* // end D routes */}
                 <Route path="*" element={<div className="page"><EmptyState title="Page not found" body="That address does not match a page." /></div>} />
               </Route>

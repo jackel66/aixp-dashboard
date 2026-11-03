@@ -1,0 +1,113 @@
+{
+ "id": "platforms_freshness",
+ "title": "Platform freshness",
+ "description": "How current each platform is, with its coverage window and check results.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "platform",
+   "label": "Platform",
+   "type": "platform"
+  },
+  {
+   "key": "as_of",
+   "label": "As of",
+   "type": "date"
+  },
+  {
+   "key": "lag_days",
+   "label": "Lag (days)",
+   "type": "number"
+  },
+  {
+   "key": "stale",
+   "label": "Stale",
+   "type": "text"
+  },
+  {
+   "key": "coverage_from",
+   "label": "Coverage from",
+   "type": "date"
+  },
+  {
+   "key": "coverage_to",
+   "label": "Coverage to",
+   "type": "date"
+  },
+  {
+   "key": "rows",
+   "label": "Rows",
+   "type": "number"
+  },
+  {
+   "key": "checks_failed",
+   "label": "Checks failed",
+   "type": "number"
+  },
+  {
+   "key": "checks_warn",
+   "label": "Checks warning",
+   "type": "number"
+  }
+ ],
+ "rows": [
+  {
+   "platform": "anthropic",
+   "as_of": "2026-10-29",
+   "lag_days": 0,
+   "stale": "Current",
+   "coverage_from": "2025-11-01",
+   "coverage_to": "2026-10-29",
+   "rows": 421686,
+   "checks_failed": 0,
+   "checks_warn": 1
+  },
+  {
+   "platform": "openai",
+   "as_of": "2026-10-29",
+   "lag_days": 0,
+   "stale": "Current",
+   "coverage_from": "2025-11-01",
+   "coverage_to": "2026-10-29",
+   "rows": 229279,
+   "checks_failed": 0,
+   "checks_warn": 0
+  },
+  {
+   "platform": "github",
+   "as_of": "2026-10-20",
+   "lag_days": 9,
+   "stale": "Stale",
+   "coverage_from": "2025-11-01",
+   "coverage_to": "2026-10-20",
+   "rows": 67080,
+   "checks_failed": 1,
+   "checks_warn": 2
+  },
+  {
+   "platform": "cowork",
+   "as_of": "2026-10-29",
+   "lag_days": 0,
+   "stale": "Current",
+   "coverage_from": "2025-11-01",
+   "coverage_to": "2026-10-29",
+   "rows": 55151,
+   "checks_failed": 0,
+   "checks_warn": 1
+  }
+ ],
+ "totals": null,
+ "chart": null,
+ "notes": []
+}

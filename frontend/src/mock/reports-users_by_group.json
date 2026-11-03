@@ -1,0 +1,112 @@
+{
+ "id": "users_by_group",
+ "title": "Users by group",
+ "description": "Active users and spend per group. Choose the grouping with the switch.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "group",
+   "label": "Group",
+   "type": "text"
+  },
+  {
+   "key": "users",
+   "label": "Active users",
+   "type": "number"
+  },
+  {
+   "key": "usd",
+   "label": "Spend (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_per_user",
+   "label": "Spend per user (USD)",
+   "type": "money"
+  },
+  {
+   "key": "share",
+   "label": "Share of spend",
+   "type": "pct"
+  }
+ ],
+ "rows": [
+  {
+   "group": "GBS - L&C",
+   "users": 112,
+   "usd": 84210,
+   "usd_per_user": 752,
+   "share": 31.6
+  },
+  {
+   "group": "GBS - GRM",
+   "users": 96,
+   "usd": 71480,
+   "usd_per_user": 745,
+   "share": 26.8
+  },
+  {
+   "group": "GBS - CIB",
+   "users": 88,
+   "usd": 66930,
+   "usd_per_user": 761,
+   "share": 25.1
+  },
+  {
+   "group": "GBS - OPS",
+   "users": 54,
+   "usd": 31200,
+   "usd_per_user": 578,
+   "share": 11.7
+  },
+  {
+   "group": "Unmatched",
+   "users": 36,
+   "usd": 12750,
+   "usd_per_user": 354,
+   "share": 4.8
+  }
+ ],
+ "totals": {
+  "group": "Total",
+  "users": 386,
+  "usd": 266570,
+  "usd_per_user": 691,
+  "share": 100
+ },
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "GBS - L&C",
+   "GBS - GRM",
+   "GBS - CIB",
+   "GBS - OPS",
+   "Unmatched"
+  ],
+  "series": [
+   {
+    "label": "Spend (USD)",
+    "data": [
+     84210,
+     71480,
+     66930,
+     31200,
+     12750
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": []
+}

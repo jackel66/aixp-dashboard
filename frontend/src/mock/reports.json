@@ -1,0 +1,792 @@
+{
+ "groups": [
+  {
+   "id": "users",
+   "title": "Users"
+  },
+  {
+   "id": "platforms",
+   "title": "Platforms"
+  },
+  {
+   "id": "models",
+   "title": "Models"
+  },
+  {
+   "id": "costs",
+   "title": "Costs"
+  }
+ ],
+ "reports": [
+  {
+   "id": "users_top",
+   "group": "users",
+   "title": "Top users by spend",
+   "description": "The highest-spending people in the selected range, with spend split by platform.",
+   "params": [
+    "range",
+    "platform",
+    "basis",
+    "limit"
+   ],
+   "columns": [
+    {
+     "key": "rank",
+     "label": "Rank",
+     "type": "number"
+    },
+    {
+     "key": "user",
+     "label": "User",
+     "type": "text"
+    },
+    {
+     "key": "lob_cg",
+     "label": "LOB-CG",
+     "type": "text"
+    },
+    {
+     "key": "region",
+     "label": "Region",
+     "type": "text"
+    },
+    {
+     "key": "usd",
+     "label": "Spend (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_anthropic",
+     "label": "Anthropic (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_openai",
+     "label": "OpenAI (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_github",
+     "label": "GitHub Copilot (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_cowork",
+     "label": "Copilot Cowork (USD)",
+     "type": "money"
+    },
+    {
+     "key": "active_days",
+     "label": "Active days",
+     "type": "number"
+    },
+    {
+     "key": "share",
+     "label": "Share of spend",
+     "type": "pct"
+    }
+   ]
+  },
+  {
+   "id": "users_new",
+   "group": "users",
+   "title": "New users",
+   "description": "People whose first activity in the dataset falls inside the range.",
+   "params": [
+    "range",
+    "platform"
+   ],
+   "columns": [
+    {
+     "key": "user",
+     "label": "User",
+     "type": "text"
+    },
+    {
+     "key": "lob_cg",
+     "label": "LOB-CG",
+     "type": "text"
+    },
+    {
+     "key": "first_seen",
+     "label": "First seen",
+     "type": "date"
+    },
+    {
+     "key": "first_platform",
+     "label": "First platform",
+     "type": "platform"
+    },
+    {
+     "key": "usd_since",
+     "label": "Spend since (USD)",
+     "type": "money"
+    },
+    {
+     "key": "platforms",
+     "label": "Platforms",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "users_inactive",
+   "group": "users",
+   "title": "Inactive users",
+   "description": "People active in the 90 days before the range but not in it.",
+   "params": [
+    "range",
+    "platform"
+   ],
+   "columns": [
+    {
+     "key": "user",
+     "label": "User",
+     "type": "text"
+    },
+    {
+     "key": "lob_cg",
+     "label": "LOB-CG",
+     "type": "text"
+    },
+    {
+     "key": "last_seen",
+     "label": "Last seen",
+     "type": "date"
+    },
+    {
+     "key": "days_silent",
+     "label": "Days silent",
+     "type": "number"
+    },
+    {
+     "key": "usd_before",
+     "label": "Spend before (USD)",
+     "type": "money"
+    }
+   ]
+  },
+  {
+   "id": "users_multi_platform",
+   "group": "users",
+   "title": "Multi-platform users",
+   "description": "People active on two or more platforms in the range.",
+   "params": [
+    "range",
+    "basis",
+    "limit"
+   ],
+   "columns": [
+    {
+     "key": "user",
+     "label": "User",
+     "type": "text"
+    },
+    {
+     "key": "lob_cg",
+     "label": "LOB-CG",
+     "type": "text"
+    },
+    {
+     "key": "platform_count",
+     "label": "Platforms",
+     "type": "number"
+    },
+    {
+     "key": "usd_anthropic",
+     "label": "Anthropic (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_openai",
+     "label": "OpenAI (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_github",
+     "label": "GitHub Copilot (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_cowork",
+     "label": "Copilot Cowork (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd",
+     "label": "Spend (USD)",
+     "type": "money"
+    }
+   ]
+  },
+  {
+   "id": "users_by_group",
+   "group": "users",
+   "title": "Users by group",
+   "description": "Active users and spend per group. Choose the grouping with the switch.",
+   "params": [
+    "range",
+    "platform",
+    "basis",
+    "dim"
+   ],
+   "columns": [
+    {
+     "key": "group",
+     "label": "Group",
+     "type": "text"
+    },
+    {
+     "key": "users",
+     "label": "Active users",
+     "type": "number"
+    },
+    {
+     "key": "usd",
+     "label": "Spend (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_per_user",
+     "label": "Spend per user (USD)",
+     "type": "money"
+    },
+    {
+     "key": "share",
+     "label": "Share of spend",
+     "type": "pct"
+    }
+   ]
+  },
+  {
+   "id": "users_unmatched",
+   "group": "users",
+   "title": "Unmatched usage keys",
+   "description": "Usage keys that do not resolve to a person in the People file.",
+   "params": [
+    "range",
+    "platform",
+    "limit"
+   ],
+   "columns": [
+    {
+     "key": "person_key",
+     "label": "Usage key",
+     "type": "text"
+    },
+    {
+     "key": "platforms",
+     "label": "Platforms",
+     "type": "number"
+    },
+    {
+     "key": "rows",
+     "label": "Rows",
+     "type": "number"
+    },
+    {
+     "key": "usd",
+     "label": "Spend (USD)",
+     "type": "money"
+    },
+    {
+     "key": "first_seen",
+     "label": "First seen",
+     "type": "date"
+    },
+    {
+     "key": "last_seen",
+     "label": "Last seen",
+     "type": "date"
+    }
+   ]
+  },
+  {
+   "id": "platforms_summary",
+   "group": "platforms",
+   "title": "Platform summary",
+   "description": "One row per platform: freshness, spend, consumption and seat use.",
+   "params": [
+    "range",
+    "basis"
+   ],
+   "columns": [
+    {
+     "key": "platform",
+     "label": "Platform",
+     "type": "platform"
+    },
+    {
+     "key": "as_of",
+     "label": "As of",
+     "type": "date"
+    },
+    {
+     "key": "lag_days",
+     "label": "Lag (days)",
+     "type": "number"
+    },
+    {
+     "key": "consumption_usd",
+     "label": "Consumption (USD)",
+     "type": "money"
+    },
+    {
+     "key": "seat_usd",
+     "label": "Seat (USD)",
+     "type": "money"
+    },
+    {
+     "key": "total_usd",
+     "label": "Total (USD)",
+     "type": "money"
+    },
+    {
+     "key": "consumption",
+     "label": "Consumption",
+     "type": "units"
+    },
+    {
+     "key": "active_users",
+     "label": "Active users",
+     "type": "number"
+    },
+    {
+     "key": "usd_per_active_user",
+     "label": "Spend per active user (USD)",
+     "type": "money"
+    },
+    {
+     "key": "licensed_seats",
+     "label": "Licensed seats",
+     "type": "number"
+    },
+    {
+     "key": "seat_utilisation_pct",
+     "label": "Seat utilisation",
+     "type": "pct"
+    }
+   ]
+  },
+  {
+   "id": "platforms_monthly",
+   "group": "platforms",
+   "title": "Platforms by month",
+   "description": "Monthly spend per platform on the selected basis, with the change from the previous month.",
+   "params": [
+    "range",
+    "basis"
+   ],
+   "columns": [
+    {
+     "key": "month",
+     "label": "Month",
+     "type": "text"
+    },
+    {
+     "key": "usd_anthropic",
+     "label": "Anthropic (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_openai",
+     "label": "OpenAI (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_github",
+     "label": "GitHub Copilot (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_cowork",
+     "label": "Copilot Cowork (USD)",
+     "type": "money"
+    },
+    {
+     "key": "total",
+     "label": "Total (USD)",
+     "type": "money"
+    },
+    {
+     "key": "delta",
+     "label": "Change vs previous month",
+     "type": "delta"
+    }
+   ]
+  },
+  {
+   "id": "platforms_freshness",
+   "group": "platforms",
+   "title": "Platform freshness",
+   "description": "How current each platform is, with its coverage window and check results.",
+   "params": [],
+   "columns": [
+    {
+     "key": "platform",
+     "label": "Platform",
+     "type": "platform"
+    },
+    {
+     "key": "as_of",
+     "label": "As of",
+     "type": "date"
+    },
+    {
+     "key": "lag_days",
+     "label": "Lag (days)",
+     "type": "number"
+    },
+    {
+     "key": "stale",
+     "label": "Stale",
+     "type": "text"
+    },
+    {
+     "key": "coverage_from",
+     "label": "Coverage from",
+     "type": "date"
+    },
+    {
+     "key": "coverage_to",
+     "label": "Coverage to",
+     "type": "date"
+    },
+    {
+     "key": "rows",
+     "label": "Rows",
+     "type": "number"
+    },
+    {
+     "key": "checks_failed",
+     "label": "Checks failed",
+     "type": "number"
+    },
+    {
+     "key": "checks_warn",
+     "label": "Checks warning",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "id": "platforms_seat_utilisation",
+   "group": "platforms",
+   "title": "Seat utilisation",
+   "description": "Licensed seats against active people, per platform and month.",
+   "params": [
+    "range",
+    "platform"
+   ],
+   "columns": [
+    {
+     "key": "platform",
+     "label": "Platform",
+     "type": "platform"
+    },
+    {
+     "key": "month",
+     "label": "Month",
+     "type": "text"
+    },
+    {
+     "key": "licensed_seats",
+     "label": "Licensed seats",
+     "type": "number"
+    },
+    {
+     "key": "active_people",
+     "label": "Active people",
+     "type": "number"
+    },
+    {
+     "key": "utilisation_pct",
+     "label": "Utilisation",
+     "type": "pct"
+    },
+    {
+     "key": "seat_usd",
+     "label": "Seat (USD)",
+     "type": "money"
+    },
+    {
+     "key": "consumption_usd",
+     "label": "Consumption (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_per_active",
+     "label": "Spend per active person (USD)",
+     "type": "money"
+    }
+   ]
+  },
+  {
+   "id": "models_cost",
+   "group": "models",
+   "title": "Model cost",
+   "description": "Spend and consumption per model. Only platforms that report a model name appear.",
+   "params": [
+    "range",
+    "platform",
+    "basis",
+    "limit"
+   ],
+   "columns": [
+    {
+     "key": "platform",
+     "label": "Platform",
+     "type": "platform"
+    },
+    {
+     "key": "model",
+     "label": "Model",
+     "type": "text"
+    },
+    {
+     "key": "usd",
+     "label": "Spend (USD)",
+     "type": "money"
+    },
+    {
+     "key": "consumption",
+     "label": "Consumption",
+     "type": "units"
+    },
+    {
+     "key": "requests",
+     "label": "Requests",
+     "type": "number"
+    },
+    {
+     "key": "users",
+     "label": "Active users",
+     "type": "number"
+    },
+    {
+     "key": "cost_per_million",
+     "label": "Cost per million tokens (USD)",
+     "type": "money"
+    },
+    {
+     "key": "share",
+     "label": "Share of spend",
+     "type": "pct"
+    }
+   ]
+  },
+  {
+   "id": "models_adoption",
+   "group": "models",
+   "title": "Model adoption",
+   "description": "Active users per week for the eight most used models.",
+   "params": [
+    "range",
+    "platform"
+   ],
+   "columns": [
+    {
+     "key": "week",
+     "label": "Week",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "id": "models_by_group",
+   "group": "models",
+   "title": "Models by group",
+   "description": "Spend per group and model for the eight most used models.",
+   "params": [
+    "range",
+    "platform",
+    "basis",
+    "dim"
+   ],
+   "columns": [
+    {
+     "key": "group",
+     "label": "Group",
+     "type": "text"
+    }
+   ]
+  },
+  {
+   "id": "costs_monthly",
+   "group": "costs",
+   "title": "Monthly costs",
+   "description": "Consumption and seat spend per month, with the change in total.",
+   "params": [
+    "range",
+    "platform"
+   ],
+   "columns": [
+    {
+     "key": "month",
+     "label": "Month",
+     "type": "text"
+    },
+    {
+     "key": "consumption_usd",
+     "label": "Consumption (USD)",
+     "type": "money"
+    },
+    {
+     "key": "seat_usd",
+     "label": "Seat (USD)",
+     "type": "money"
+    },
+    {
+     "key": "total_usd",
+     "label": "Total (USD)",
+     "type": "money"
+    },
+    {
+     "key": "delta_total",
+     "label": "Change in total",
+     "type": "delta"
+    },
+    {
+     "key": "active_users",
+     "label": "Active users",
+     "type": "number"
+    },
+    {
+     "key": "usd_per_user",
+     "label": "Spend per user (USD)",
+     "type": "money"
+    }
+   ]
+  },
+  {
+   "id": "costs_by_group",
+   "group": "costs",
+   "title": "Costs by group",
+   "description": "Consumption and allocated seat spend per group.",
+   "params": [
+    "range",
+    "platform",
+    "basis",
+    "dim"
+   ],
+   "columns": [
+    {
+     "key": "group",
+     "label": "Group",
+     "type": "text"
+    },
+    {
+     "key": "consumption_usd",
+     "label": "Consumption (USD)",
+     "type": "money"
+    },
+    {
+     "key": "seat_usd",
+     "label": "Seat, allocated (USD)",
+     "type": "money"
+    },
+    {
+     "key": "total_usd",
+     "label": "Total (USD)",
+     "type": "money"
+    },
+    {
+     "key": "share",
+     "label": "Share of spend",
+     "type": "pct"
+    },
+    {
+     "key": "users",
+     "label": "Active users",
+     "type": "number"
+    },
+    {
+     "key": "usd_per_user",
+     "label": "Spend per user (USD)",
+     "type": "money"
+    }
+   ]
+  },
+  {
+   "id": "costs_movers",
+   "group": "costs",
+   "title": "Cost movers",
+   "description": "Platforms and groups ranked by the size of their change against the previous window.",
+   "params": [
+    "range",
+    "basis",
+    "limit"
+   ],
+   "columns": [
+    {
+     "key": "kind",
+     "label": "Kind",
+     "type": "text"
+    },
+    {
+     "key": "name",
+     "label": "Name",
+     "type": "text"
+    },
+    {
+     "key": "now",
+     "label": "This window (USD)",
+     "type": "money"
+    },
+    {
+     "key": "prev",
+     "label": "Previous window (USD)",
+     "type": "money"
+    },
+    {
+     "key": "delta",
+     "label": "Change",
+     "type": "delta"
+    },
+    {
+     "key": "pct",
+     "label": "Change (%)",
+     "type": "pct"
+    }
+   ]
+  },
+  {
+   "id": "costs_per_user",
+   "group": "costs",
+   "title": "Cost per user",
+   "description": "Spend per active user on each platform.",
+   "params": [
+    "range",
+    "platform",
+    "basis"
+   ],
+   "columns": [
+    {
+     "key": "platform",
+     "label": "Platform",
+     "type": "platform"
+    },
+    {
+     "key": "active_users",
+     "label": "Active users",
+     "type": "number"
+    },
+    {
+     "key": "usd",
+     "label": "Spend (USD)",
+     "type": "money"
+    },
+    {
+     "key": "usd_per_user",
+     "label": "Spend per user (USD)",
+     "type": "money"
+    },
+    {
+     "key": "consumption_per_user",
+     "label": "Consumption per user",
+     "type": "units"
+    }
+   ]
+  }
+ ]
+}

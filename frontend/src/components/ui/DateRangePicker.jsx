@@ -3,6 +3,8 @@ import { addDays } from '../../lib/format.js';
 import SegmentedControl from './SegmentedControl.jsx';
 
 const PRESETS = [
+  { value: '1', label: '24 hours', n: 1 },
+  { value: '7', label: '7 days', n: 7 },
   { value: '30', label: '30 days', n: 30 },
   { value: '90', label: '90 days', n: 90 },
   { value: '180', label: '6 months', n: 180 },

@@ -1,0 +1,174 @@
+{
+ "id": "models_by_group",
+ "title": "Models by group",
+ "description": "Spend per group and model for the eight most used models.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "group",
+   "label": "Group",
+   "type": "text"
+  },
+  {
+   "key": "usd_0",
+   "label": "claude-opus-5",
+   "type": "money"
+  },
+  {
+   "key": "usd_1",
+   "label": "claude-sonnet-5",
+   "type": "money"
+  },
+  {
+   "key": "usd_2",
+   "label": "claude-haiku-5",
+   "type": "money"
+  },
+  {
+   "key": "usd_3",
+   "label": "gpt-5.4",
+   "type": "money"
+  },
+  {
+   "key": "usd_4",
+   "label": "gpt-5.4-mini",
+   "type": "money"
+  },
+  {
+   "key": "usd_5",
+   "label": "o-series-4",
+   "type": "money"
+  },
+  {
+   "key": "total",
+   "label": "Total (USD)",
+   "type": "money"
+  }
+ ],
+ "rows": [
+  {
+   "group": "GBS - L&C",
+   "usd_0": 10509,
+   "usd_1": 4930,
+   "usd_2": 9576,
+   "usd_3": 10294,
+   "usd_4": 10965,
+   "usd_5": 10123,
+   "total": 56397
+  },
+  {
+   "group": "GBS - GRM",
+   "usd_0": 10376,
+   "usd_1": 2063,
+   "usd_2": 13603,
+   "usd_3": 10887,
+   "usd_4": 5976,
+   "usd_5": 10988,
+   "total": 53893
+  },
+  {
+   "group": "GBS - CIB",
+   "usd_0": 2299,
+   "usd_1": 14787,
+   "usd_2": 10904,
+   "usd_3": 14548,
+   "usd_4": 6431,
+   "usd_5": 14160,
+   "total": 63129
+  },
+  {
+   "group": "GBS - OPS",
+   "usd_0": 9042,
+   "usd_1": 4758,
+   "usd_2": 7216,
+   "usd_3": 3698,
+   "usd_4": 14356,
+   "usd_5": 16600,
+   "total": 55670
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "stacked",
+  "labels": [
+   "GBS - L&C",
+   "GBS - GRM",
+   "GBS - CIB",
+   "GBS - OPS"
+  ],
+  "series": [
+   {
+    "label": "claude-opus-5",
+    "data": [
+     10509,
+     10376,
+     2299,
+     9042
+    ],
+    "platform": null
+   },
+   {
+    "label": "claude-sonnet-5",
+    "data": [
+     4930,
+     2063,
+     14787,
+     4758
+    ],
+    "platform": null
+   },
+   {
+    "label": "claude-haiku-5",
+    "data": [
+     9576,
+     13603,
+     10904,
+     7216
+    ],
+    "platform": null
+   },
+   {
+    "label": "gpt-5.4",
+    "data": [
+     10294,
+     10887,
+     14548,
+     3698
+    ],
+    "platform": null
+   },
+   {
+    "label": "gpt-5.4-mini",
+    "data": [
+     10965,
+     5976,
+     6431,
+     14356
+    ],
+    "platform": null
+   },
+   {
+    "label": "o-series-4",
+    "data": [
+     10123,
+     10988,
+     14160,
+     16600
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": []
+}

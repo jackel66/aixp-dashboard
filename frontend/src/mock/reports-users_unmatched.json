@@ -1,0 +1,104 @@
+{
+ "id": "users_unmatched",
+ "title": "Unmatched usage keys",
+ "description": "Usage keys that do not resolve to a person in the People file.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "person_key",
+   "label": "Usage key",
+   "type": "text"
+  },
+  {
+   "key": "platforms",
+   "label": "Platforms",
+   "type": "number"
+  },
+  {
+   "key": "rows",
+   "label": "Rows",
+   "type": "number"
+  },
+  {
+   "key": "usd",
+   "label": "Spend (USD)",
+   "type": "money"
+  },
+  {
+   "key": "first_seen",
+   "label": "First seen",
+   "type": "date"
+  },
+  {
+   "key": "last_seen",
+   "label": "Last seen",
+   "type": "date"
+  }
+ ],
+ "rows": [
+  {
+   "person_key": "svc-build-bot",
+   "platforms": 1,
+   "rows": 849,
+   "usd": 644,
+   "first_seen": "2026-08-09",
+   "last_seen": "2026-10-16"
+  },
+  {
+   "person_key": "ci-runner-07",
+   "platforms": 2,
+   "rows": 497,
+   "usd": 1787,
+   "first_seen": "2026-08-24",
+   "last_seen": "2026-10-21"
+  },
+  {
+   "person_key": "tmp-contractor-4",
+   "platforms": 2,
+   "rows": 122,
+   "usd": 516,
+   "first_seen": "2026-08-08",
+   "last_seen": "2026-10-25"
+  },
+  {
+   "person_key": "unknown-key-2291",
+   "platforms": 1,
+   "rows": 385,
+   "usd": 481,
+   "first_seen": "2026-08-20",
+   "last_seen": "2026-10-29"
+  },
+  {
+   "person_key": "svc-etl",
+   "platforms": 1,
+   "rows": 530,
+   "usd": 2004,
+   "first_seen": "2026-08-12",
+   "last_seen": "2026-10-12"
+  },
+  {
+   "person_key": "legacy-sso-id",
+   "platforms": 1,
+   "rows": 437,
+   "usd": 1730,
+   "first_seen": "2026-08-25",
+   "last_seen": "2026-10-16"
+  }
+ ],
+ "totals": null,
+ "chart": null,
+ "notes": [
+  "These keys are included in raw spend and excluded from attributed spend."
+ ]
+}

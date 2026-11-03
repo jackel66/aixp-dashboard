@@ -1,0 +1,165 @@
+{
+ "id": "users_new",
+ "title": "New users",
+ "description": "People whose first activity in the dataset falls inside the range.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "user",
+   "label": "User",
+   "type": "text"
+  },
+  {
+   "key": "lob_cg",
+   "label": "LOB-CG",
+   "type": "text"
+  },
+  {
+   "key": "first_seen",
+   "label": "First seen",
+   "type": "date"
+  },
+  {
+   "key": "first_platform",
+   "label": "First platform",
+   "type": "platform"
+  },
+  {
+   "key": "usd_since",
+   "label": "Spend since (USD)",
+   "type": "money"
+  },
+  {
+   "key": "platforms",
+   "label": "Platforms",
+   "type": "number"
+  }
+ ],
+ "rows": [
+  {
+   "user": "Ben Wong",
+   "person_key": "bwong",
+   "lob_cg": "GBS - CIB",
+   "first_seen": "2026-08-06",
+   "first_platform": "cowork",
+   "usd_since": 811,
+   "platforms": 2
+  },
+  {
+   "user": "Sam Doe",
+   "person_key": "sdoe",
+   "lob_cg": "GBS - CIB",
+   "first_seen": "2026-08-20",
+   "first_platform": "anthropic",
+   "usd_since": 979,
+   "platforms": 1
+  },
+  {
+   "user": "Eli Hall",
+   "person_key": "ehall",
+   "lob_cg": "GBS - GRM",
+   "first_seen": "2026-08-27",
+   "first_platform": "cowork",
+   "usd_since": 1652,
+   "platforms": 2
+  },
+  {
+   "user": "Rosa Garcia",
+   "person_key": "rgarcia",
+   "lob_cg": "GBS - L&C",
+   "first_seen": "2026-09-05",
+   "first_platform": "openai",
+   "usd_since": 804,
+   "platforms": 2
+  },
+  {
+   "user": "Marco Rossi",
+   "person_key": "mrossi",
+   "lob_cg": "GBS - CIB",
+   "first_seen": "2026-09-16",
+   "first_platform": "anthropic",
+   "usd_since": 190,
+   "platforms": 3
+  },
+  {
+   "user": "Lena Kim",
+   "person_key": "lkim",
+   "lob_cg": "GBS - L&C",
+   "first_seen": "2026-09-21",
+   "first_platform": "cowork",
+   "usd_since": 598,
+   "platforms": 2
+  },
+  {
+   "user": "Tran Nguyen",
+   "person_key": "tnguyen",
+   "lob_cg": "GBS - GRM",
+   "first_seen": "2026-10-12",
+   "first_platform": "anthropic",
+   "usd_since": 1792,
+   "platforms": 2
+  },
+  {
+   "user": "Jordan Patel",
+   "person_key": "jpatel",
+   "lob_cg": "GBS - GRM",
+   "first_seen": "2026-10-16",
+   "first_platform": "cowork",
+   "usd_since": 205,
+   "platforms": 1
+  },
+  {
+   "user": "Avery Chen",
+   "person_key": "achen",
+   "lob_cg": "GBS - L&C",
+   "first_seen": "2026-10-19",
+   "first_platform": "github",
+   "usd_since": 699,
+   "platforms": 2
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "line",
+  "labels": [
+   "7 Sep",
+   "14 Sep",
+   "21 Sep",
+   "28 Sep",
+   "5 Oct",
+   "12 Oct",
+   "19 Oct",
+   "26 Oct"
+  ],
+  "series": [
+   {
+    "label": "New users",
+    "data": [
+     4,
+     7,
+     5,
+     9,
+     6,
+     11,
+     8,
+     5
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": [
+  "A user is new when their first activity in the dataset falls inside the range."
+ ]
+}

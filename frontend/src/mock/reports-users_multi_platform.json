@@ -1,0 +1,192 @@
+{
+ "id": "users_multi_platform",
+ "title": "Multi-platform users",
+ "description": "People active on two or more platforms in the range.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "user",
+   "label": "User",
+   "type": "text"
+  },
+  {
+   "key": "lob_cg",
+   "label": "LOB-CG",
+   "type": "text"
+  },
+  {
+   "key": "platform_count",
+   "label": "Platforms",
+   "type": "number"
+  },
+  {
+   "key": "usd_anthropic",
+   "label": "Anthropic (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_openai",
+   "label": "OpenAI (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_github",
+   "label": "GitHub Copilot (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_cowork",
+   "label": "Copilot Cowork (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd",
+   "label": "Spend (USD)",
+   "type": "money"
+  }
+ ],
+ "rows": [
+  {
+   "user": "Avery Chen",
+   "person_key": "achen",
+   "lob_cg": "GBS - L&C",
+   "platform_count": 3,
+   "usd_anthropic": 262,
+   "usd_openai": 0,
+   "usd_github": 601,
+   "usd_cowork": 490,
+   "usd": 1353
+  },
+  {
+   "user": "Jordan Patel",
+   "person_key": "jpatel",
+   "lob_cg": "GBS - GRM",
+   "platform_count": 3,
+   "usd_anthropic": 1460,
+   "usd_openai": 0,
+   "usd_github": 1388,
+   "usd_cowork": 2377,
+   "usd": 5225
+  },
+  {
+   "user": "Marco Rossi",
+   "person_key": "mrossi",
+   "lob_cg": "GBS - CIB",
+   "platform_count": 4,
+   "usd_anthropic": 457,
+   "usd_openai": 705,
+   "usd_github": 934,
+   "usd_cowork": 974,
+   "usd": 3070
+  },
+  {
+   "user": "Lena Kim",
+   "person_key": "lkim",
+   "lob_cg": "GBS - L&C",
+   "platform_count": 2,
+   "usd_anthropic": 2483,
+   "usd_openai": 1218,
+   "usd_github": 0,
+   "usd_cowork": 0,
+   "usd": 3701
+  },
+  {
+   "user": "Tran Nguyen",
+   "person_key": "tnguyen",
+   "lob_cg": "GBS - GRM",
+   "platform_count": 3,
+   "usd_anthropic": 345,
+   "usd_openai": 0,
+   "usd_github": 922,
+   "usd_cowork": 735,
+   "usd": 2002
+  },
+  {
+   "user": "Sam Doe",
+   "person_key": "sdoe",
+   "lob_cg": "GBS - CIB",
+   "platform_count": 4,
+   "usd_anthropic": 2382,
+   "usd_openai": 1368,
+   "usd_github": 452,
+   "usd_cowork": 1404,
+   "usd": 5606
+  },
+  {
+   "user": "Rosa Garcia",
+   "person_key": "rgarcia",
+   "lob_cg": "GBS - L&C",
+   "platform_count": 2,
+   "usd_anthropic": 0,
+   "usd_openai": 0,
+   "usd_github": 2172,
+   "usd_cowork": 1771,
+   "usd": 3943
+  },
+  {
+   "user": "Ben Wong",
+   "person_key": "bwong",
+   "lob_cg": "GBS - CIB",
+   "platform_count": 3,
+   "usd_anthropic": 1953,
+   "usd_openai": 1378,
+   "usd_github": 1970,
+   "usd_cowork": 0,
+   "usd": 5301
+  },
+  {
+   "user": "Eli Hall",
+   "person_key": "ehall",
+   "lob_cg": "GBS - GRM",
+   "platform_count": 3,
+   "usd_anthropic": 2035,
+   "usd_openai": 2064,
+   "usd_github": 1876,
+   "usd_cowork": 0,
+   "usd": 5975
+  },
+  {
+   "user": "Katja Meyer",
+   "person_key": "kmeyer",
+   "lob_cg": "GBS - L&C",
+   "platform_count": 2,
+   "usd_anthropic": 0,
+   "usd_openai": 1283,
+   "usd_github": 1854,
+   "usd_cowork": 0,
+   "usd": 3137
+  }
+ ],
+ "totals": null,
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "2 platforms",
+   "3 platforms",
+   "4 platforms"
+  ],
+  "series": [
+   {
+    "label": "Users",
+    "data": [
+     148,
+     71,
+     19
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": []
+}

@@ -1,0 +1,186 @@
+{
+ "id": "costs_monthly",
+ "title": "Monthly costs",
+ "description": "Consumption and seat spend per month, with the change in total.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "month",
+   "label": "Month",
+   "type": "text"
+  },
+  {
+   "key": "consumption_usd",
+   "label": "Consumption (USD)",
+   "type": "money"
+  },
+  {
+   "key": "seat_usd",
+   "label": "Seat (USD)",
+   "type": "money"
+  },
+  {
+   "key": "total_usd",
+   "label": "Total (USD)",
+   "type": "money"
+  },
+  {
+   "key": "delta_total",
+   "label": "Change in total",
+   "type": "delta"
+  },
+  {
+   "key": "active_users",
+   "label": "Active users",
+   "type": "number"
+  },
+  {
+   "key": "usd_per_user",
+   "label": "Spend per user (USD)",
+   "type": "money"
+  }
+ ],
+ "rows": [
+  {
+   "month": "May 2026",
+   "consumption_usd": 91000,
+   "seat_usd": 30000,
+   "total_usd": 121000,
+   "delta_total": {
+    "now": 121000,
+    "prev": null,
+    "delta": null,
+    "pct": null
+   },
+   "active_users": 250,
+   "usd_per_user": 484
+  },
+  {
+   "month": "Jun 2026",
+   "consumption_usd": 111000,
+   "seat_usd": 30000,
+   "total_usd": 141000,
+   "delta_total": {
+    "now": 141000,
+    "prev": 121000,
+    "delta": 20000,
+    "pct": 16.5
+   },
+   "active_users": 290,
+   "usd_per_user": 486
+  },
+  {
+   "month": "Jul 2026",
+   "consumption_usd": 139000,
+   "seat_usd": 32000,
+   "total_usd": 171000,
+   "delta_total": {
+    "now": 171000,
+    "prev": 141000,
+    "delta": 30000,
+    "pct": 21.3
+   },
+   "active_users": 330,
+   "usd_per_user": 518
+  },
+  {
+   "month": "Aug 2026",
+   "consumption_usd": 163000,
+   "seat_usd": 34000,
+   "total_usd": 197000,
+   "delta_total": {
+    "now": 197000,
+    "prev": 171000,
+    "delta": 26000,
+    "pct": 15.2
+   },
+   "active_users": 360,
+   "usd_per_user": 547
+  },
+  {
+   "month": "Sep 2026",
+   "consumption_usd": 194000,
+   "seat_usd": 37000,
+   "total_usd": 231000,
+   "delta_total": {
+    "now": 231000,
+    "prev": 197000,
+    "delta": 34000,
+    "pct": 17.3
+   },
+   "active_users": 380,
+   "usd_per_user": 608
+  },
+  {
+   "month": "Oct 2026",
+   "consumption_usd": 249400,
+   "seat_usd": 38580,
+   "total_usd": 287980,
+   "delta_total": {
+    "now": 287980,
+    "prev": 231000,
+    "delta": 56980,
+    "pct": 24.7
+   },
+   "active_users": 386,
+   "usd_per_user": 746
+  }
+ ],
+ "totals": {
+  "month": "Total",
+  "consumption_usd": 947400,
+  "seat_usd": 201580,
+  "total_usd": 1148980
+ },
+ "chart": {
+  "type": "stacked",
+  "labels": [
+   "May 2026",
+   "Jun 2026",
+   "Jul 2026",
+   "Aug 2026",
+   "Sep 2026",
+   "Oct 2026"
+  ],
+  "series": [
+   {
+    "label": "Consumption",
+    "data": [
+     91000,
+     111000,
+     139000,
+     163000,
+     194000,
+     249400
+    ],
+    "platform": null
+   },
+   {
+    "label": "Seat",
+    "data": [
+     30000,
+     30000,
+     32000,
+     34000,
+     37000,
+     38580
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": [
+  "October 2026 is month to date (to 29 Oct)."
+ ]
+}

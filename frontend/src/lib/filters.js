@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-export const FILTER_KEYS = ['from', 'to', 'bucket', 'platform', 'basis', 'rows', 'measure', 'q', 'sort', 'page', 'user', 'model', 'check'];
+export const FILTER_KEYS = ['from', 'to', 'bucket', 'platform', 'basis', 'rows', 'measure', 'q', 'sort', 'page', 'user', 'model', 'check', 'dim', 'limit'];
 const PUSH_KEYS = new Set(['user', 'model', 'check']);
 const LIST_KEYS = new Set(['platform']);
 

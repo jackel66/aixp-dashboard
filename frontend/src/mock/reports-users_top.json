@@ -1,0 +1,290 @@
+{
+ "id": "users_top",
+ "title": "Top users by spend",
+ "description": "The highest-spending people in the selected range, with spend split by platform.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "rank",
+   "label": "Rank",
+   "type": "number"
+  },
+  {
+   "key": "user",
+   "label": "User",
+   "type": "text"
+  },
+  {
+   "key": "lob_cg",
+   "label": "LOB-CG",
+   "type": "text"
+  },
+  {
+   "key": "region",
+   "label": "Region",
+   "type": "text"
+  },
+  {
+   "key": "usd",
+   "label": "Spend (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_anthropic",
+   "label": "Anthropic (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_openai",
+   "label": "OpenAI (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_github",
+   "label": "GitHub Copilot (USD)",
+   "type": "money"
+  },
+  {
+   "key": "usd_cowork",
+   "label": "Copilot Cowork (USD)",
+   "type": "money"
+  },
+  {
+   "key": "active_days",
+   "label": "Active days",
+   "type": "number"
+  },
+  {
+   "key": "share",
+   "label": "Share of spend",
+   "type": "pct"
+  }
+ ],
+ "rows": [
+  {
+   "rank": 1,
+   "user": "Lena Kim",
+   "person_key": "lkim",
+   "lob_cg": "GBS - L&C",
+   "region": "APAC",
+   "usd": 7469,
+   "usd_anthropic": 3042,
+   "usd_openai": 2092,
+   "usd_github": 1949,
+   "usd_cowork": 386,
+   "active_days": 70,
+   "share": 4.3
+  },
+  {
+   "rank": 2,
+   "user": "Ben Wong",
+   "person_key": "bwong",
+   "lob_cg": "GBS - CIB",
+   "region": "APAC",
+   "usd": 7434,
+   "usd_anthropic": 1893,
+   "usd_openai": 2057,
+   "usd_github": 1689,
+   "usd_cowork": 1795,
+   "active_days": 60,
+   "share": 4.3
+  },
+  {
+   "rank": 3,
+   "user": "Omar Adams",
+   "person_key": "oadams",
+   "lob_cg": "GBS - GRM",
+   "region": "EMEA",
+   "usd": 7147,
+   "usd_anthropic": 2388,
+   "usd_openai": 1064,
+   "usd_github": 3141,
+   "usd_cowork": 554,
+   "active_days": 73,
+   "share": 4.1
+  },
+  {
+   "rank": 4,
+   "user": "Katja Meyer",
+   "person_key": "kmeyer",
+   "lob_cg": "GBS - L&C",
+   "region": "EMEA",
+   "usd": 6928,
+   "usd_anthropic": 2297,
+   "usd_openai": 932,
+   "usd_github": 1923,
+   "usd_cowork": 1776,
+   "active_days": 63,
+   "share": 4.0
+  },
+  {
+   "rank": 5,
+   "user": "Eli Hall",
+   "person_key": "ehall",
+   "lob_cg": "GBS - GRM",
+   "region": "Americas",
+   "usd": 6797,
+   "usd_anthropic": 1597,
+   "usd_openai": 2970,
+   "usd_github": 1285,
+   "usd_cowork": 945,
+   "active_days": 43,
+   "share": 3.9
+  },
+  {
+   "rank": 6,
+   "user": "Priya Shah",
+   "person_key": "pshah",
+   "lob_cg": "GBS - CIB",
+   "region": "APAC",
+   "usd": 6386,
+   "usd_anthropic": 695,
+   "usd_openai": 1226,
+   "usd_github": 3000,
+   "usd_cowork": 1465,
+   "active_days": 29,
+   "share": 3.7
+  },
+  {
+   "rank": 7,
+   "user": "Jordan Patel",
+   "person_key": "jpatel",
+   "lob_cg": "GBS - GRM",
+   "region": "EMEA",
+   "usd": 6203,
+   "usd_anthropic": 482,
+   "usd_openai": 1948,
+   "usd_github": 2929,
+   "usd_cowork": 844,
+   "active_days": 31,
+   "share": 3.6
+  },
+  {
+   "rank": 8,
+   "user": "Sam Doe",
+   "person_key": "sdoe",
+   "lob_cg": "GBS - CIB",
+   "region": "Americas",
+   "usd": 4959,
+   "usd_anthropic": 633,
+   "usd_openai": 553,
+   "usd_github": 1125,
+   "usd_cowork": 2648,
+   "active_days": 43,
+   "share": 2.9
+  },
+  {
+   "rank": 9,
+   "user": "Avery Chen",
+   "person_key": "achen",
+   "lob_cg": "GBS - L&C",
+   "region": "Americas",
+   "usd": 4394,
+   "usd_anthropic": 1171,
+   "usd_openai": 653,
+   "usd_github": 2153,
+   "usd_cowork": 417,
+   "active_days": 88,
+   "share": 2.5
+  },
+  {
+   "rank": 10,
+   "user": "Marco Rossi",
+   "person_key": "mrossi",
+   "lob_cg": "GBS - CIB",
+   "region": "EMEA",
+   "usd": 3857,
+   "usd_anthropic": 1501,
+   "usd_openai": 410,
+   "usd_github": 472,
+   "usd_cowork": 1474,
+   "active_days": 35,
+   "share": 2.2
+  },
+  {
+   "rank": 11,
+   "user": "Tran Nguyen",
+   "person_key": "tnguyen",
+   "lob_cg": "GBS - GRM",
+   "region": "APAC",
+   "usd": 3682,
+   "usd_anthropic": 349,
+   "usd_openai": 863,
+   "usd_github": 1870,
+   "usd_cowork": 600,
+   "active_days": 73,
+   "share": 2.1
+  },
+  {
+   "rank": 12,
+   "user": "Rosa Garcia",
+   "person_key": "rgarcia",
+   "lob_cg": "GBS - L&C",
+   "region": "Americas",
+   "usd": 3679,
+   "usd_anthropic": 509,
+   "usd_openai": 1914,
+   "usd_github": 764,
+   "usd_cowork": 492,
+   "active_days": 28,
+   "share": 2.1
+  }
+ ],
+ "totals": {
+  "user": "Top 12",
+  "usd": 68935,
+  "usd_anthropic": 16557,
+  "usd_openai": 16682,
+  "usd_github": 22300,
+  "usd_cowork": 13396,
+  "share": 39.7
+ },
+ "chart": {
+  "type": "bar",
+  "labels": [
+   "Lena Kim",
+   "Ben Wong",
+   "Omar Adams",
+   "Katja Meyer",
+   "Eli Hall",
+   "Priya Shah",
+   "Jordan Patel",
+   "Sam Doe",
+   "Avery Chen",
+   "Marco Rossi"
+  ],
+  "series": [
+   {
+    "label": "Spend (USD)",
+    "data": [
+     7469,
+     7434,
+     7147,
+     6928,
+     6797,
+     6386,
+     6203,
+     4959,
+     4394,
+     3857
+    ],
+    "platform": null
+   }
+  ]
+ },
+ "notes": [
+  "Spend follows the basis selected above.",
+  "Share is the share of all spend in the range, not of this list."
+ ]
+}

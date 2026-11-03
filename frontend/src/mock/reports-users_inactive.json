@@ -1,0 +1,113 @@
+{
+ "id": "users_inactive",
+ "title": "Inactive users",
+ "description": "People active in the 90 days before the range but not in it.",
+ "asOf": "2026-10-29",
+ "range": {
+  "from": "2026-07-31",
+  "to": "2026-10-29"
+ },
+ "params": {
+  "from": "2026-07-31",
+  "to": "2026-10-29",
+  "basis": "consumption",
+  "dim": "lob_cg",
+  "limit": 50
+ },
+ "columns": [
+  {
+   "key": "user",
+   "label": "User",
+   "type": "text"
+  },
+  {
+   "key": "lob_cg",
+   "label": "LOB-CG",
+   "type": "text"
+  },
+  {
+   "key": "last_seen",
+   "label": "Last seen",
+   "type": "date"
+  },
+  {
+   "key": "days_silent",
+   "label": "Days silent",
+   "type": "number"
+  },
+  {
+   "key": "usd_before",
+   "label": "Spend before (USD)",
+   "type": "money"
+  }
+ ],
+ "rows": [
+  {
+   "user": "Marco Rossi",
+   "person_key": "mrossi",
+   "lob_cg": "GBS - CIB",
+   "last_seen": "2026-09-12",
+   "days_silent": 57,
+   "usd_before": 3748
+  },
+  {
+   "user": "Lena Kim",
+   "person_key": "lkim",
+   "lob_cg": "GBS - L&C",
+   "last_seen": "2026-08-05",
+   "days_silent": 19,
+   "usd_before": 987
+  },
+  {
+   "user": "Tran Nguyen",
+   "person_key": "tnguyen",
+   "lob_cg": "GBS - GRM",
+   "last_seen": "2026-08-22",
+   "days_silent": 28,
+   "usd_before": 347
+  },
+  {
+   "user": "Sam Doe",
+   "person_key": "sdoe",
+   "lob_cg": "GBS - CIB",
+   "last_seen": "2026-08-09",
+   "days_silent": 32,
+   "usd_before": 316
+  },
+  {
+   "user": "Rosa Garcia",
+   "person_key": "rgarcia",
+   "lob_cg": "GBS - L&C",
+   "last_seen": "2026-09-18",
+   "days_silent": 37,
+   "usd_before": 2678
+  },
+  {
+   "user": "Ben Wong",
+   "person_key": "bwong",
+   "lob_cg": "GBS - CIB",
+   "last_seen": "2026-09-05",
+   "days_silent": 58,
+   "usd_before": 3651
+  },
+  {
+   "user": "Eli Hall",
+   "person_key": "ehall",
+   "lob_cg": "GBS - GRM",
+   "last_seen": "2026-08-15",
+   "days_silent": 69,
+   "usd_before": 3342
+  },
+  {
+   "user": "Katja Meyer",
+   "person_key": "kmeyer",
+   "lob_cg": "GBS - L&C",
+   "last_seen": "2026-09-13",
+   "days_silent": 39,
+   "usd_before": 1837
+  }
+ ],
+ "totals": null,
+ "chart": null,
+ "notes": []
+}

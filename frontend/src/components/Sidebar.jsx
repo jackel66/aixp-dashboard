@@ -10,7 +10,8 @@ const SECTIONS = [
   { to: '/organization', label: 'Organization' },
   { to: '/models', label: 'Models' },
   { to: '/users', label: 'Users' },
-  { to: '/data-quality', label: 'Data quality' }
+  { to: '/data-quality', label: 'Data quality' },
+  { to: '/reports', label: 'Reports' }
 ];
 
 function Icon({ name }) {
@@ -20,11 +21,12 @@ function Icon({ name }) {
     org: 'M2 3h12 M2 8h12 M2 13h12',
     models: 'M3 3h4v4H3z M9 3h4v4H9z M3 9h4v4H3z M9 9h4v4H9z',
     users: 'M8 8a3 3 0 100-6 3 3 0 000 6z M2 14a6 6 0 0112 0',
+    reports: 'M3 1.5h7l3 3v10H3z M10 1.5v3h3 M5.5 8h5 M5.5 11h5',
     quality: 'M8 1.5l5.5 2.5v4c0 3.5-2.5 5.5-5.5 6.5C5 13.5 2.5 11.5 2.5 8V4z M5.5 8l2 2 3-3'
   }[name];
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
 }
-const ICONS = { '/': 'home', '/overview': 'overview', '/organization': 'org', '/models': 'models', '/users': 'users', '/data-quality': 'quality' };
+const ICONS = { '/': 'home', '/overview': 'overview', '/organization': 'org', '/models': 'models', '/users': 'users', '/data-quality': 'quality', '/reports': 'reports' };
 
 export default function Sidebar() {
   return (
