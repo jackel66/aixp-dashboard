@@ -175,6 +175,30 @@ button { font: inherit; }
 .nav-link:hover { color: var(--ink); background: var(--bg-2); }
 .nav-link[aria-current="page"], .nav-link.active { color: var(--ink); background: var(--accent-soft); }
 
+/* Shell: header on top, sections in the left column, analytics in the right pane */
+.app-body { display: flex; flex: 1; min-width: 0; align-items: stretch; }
+.app-pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sidebar {
+  flex: 0 0 232px; width: 232px; border-right: 1px solid var(--line); background: var(--bg-1);
+}
+.sidebar-inner { position: sticky; top: 56px; padding: 16px 12px 24px; display: flex; flex-direction: column; gap: 4px; }
+.side-group { padding: 16px 12px 6px; font-size: 11px; }
+.side-link {
+  display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 8px;
+  color: var(--muted); text-decoration: none; font-weight: 500; font-size: 14px;
+}
+.side-link:hover { color: var(--ink); background: var(--bg-2); }
+.side-link[aria-current="page"] { color: var(--ink); background: var(--accent-soft); }
+.side-link svg { flex: 0 0 16px; }
+.side-dot { width: 8px; height: 8px; border-radius: 3px; margin: 0 4px; flex: 0 0 8px; }
+@media (max-width: 900px) {
+  .app-body { flex-direction: column; }
+  .sidebar { width: auto; flex: 0 0 auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .sidebar-inner { position: static; flex-direction: row; flex-wrap: wrap; padding: 8px 12px; }
+  .sidebar-inner ul { flex-direction: row; flex-wrap: wrap; }
+  .side-group { padding: 0 8px; align-self: center; }
+}
+
 /* Chips and badges: colour change is the only animated property */
 .chip {
   display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 8px;
