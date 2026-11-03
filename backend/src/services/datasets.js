@@ -31,10 +31,13 @@ function shape(row, db) {
   const platforms = db
     .prepare('SELECT platform, row_count AS rows, min_date, max_date, export_date, cost_usd FROM dataset_platforms WHERE dataset_id = ? ORDER BY platform')
     .all(row.id);
+  const options = parseJson(row.options_json, {}) || {};
+  if (!options.provider) options.provider = row.source === 'fixture' ? 'fixture' : 'import';
   return {
+    provider: options.provider,
     id: row.id, label: row.label, source: row.source, seed: row.seed, status: row.status, verdict: row.verdict,
     created_at: row.created_at, verified_at: row.verified_at, promoted_at: row.promoted_at, archived_at: row.archived_at,
-    file_hash: row.file_hash, options: parseJson(row.options_json, {}), counts: parseJson(row.counts_json, {}),
+    file_hash: row.file_hash, options, counts: parseJson(row.counts_json, {}),
     note: row.note, platforms,
   };
 }

@@ -4,6 +4,10 @@
 const { getDb } = require('../db');
 const { badRequest } = require('../errors');
 const { broadcast } = require('./events');
+const secrets = require('./secrets');
+
+// Keys stored encrypted. GET shows them as {set: bool}; server code uses getSecret().
+const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token']);
 
 const intRange = (name, lo, hi) => (v) => {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
@@ -20,7 +24,62 @@ const oneOf = (name, list) => (v) => {
   return v;
 };
 
+const text = (name, max, re) => (v) => {
+  if (v === null || v === undefined) return '';
+  if (typeof v !== 'string') throw badRequest(`${name} must be text`);
+  const t = v.trim();
+  if (t.length > max) throw badRequest(`${name} is too long (max ${max} characters)`);
+  if (re && t && !re.test(t)) throw badRequest(`${name} has characters that are not allowed`);
+  return t;
+};
+const bool = (name) => (v) => {
+  if (typeof v !== 'boolean') throw badRequest(`${name} must be true or false`);
+  return v;
+};
+const PBI_TABLE_KEYS = ['usage', 'people', 'seat_rate', 'region_map', 'lob_cg_map'];
+const PBI_TABLE_NAME = /^[A-Za-z0-9 _.-]+$/;
+
 const VALIDATORS = {
+  'powerbi.enabled': bool('powerbi.enabled'),
+  'powerbi.auth_mode': oneOf('powerbi.auth_mode', ['service_principal', 'token']),
+  'powerbi.tenant_id': text('powerbi.tenant_id', 100, /^[A-Za-z0-9._-]+$/),
+  'powerbi.client_id': text('powerbi.client_id', 64, /^[A-Za-z0-9-]+$/),
+  'powerbi.workspace_id': text('powerbi.workspace_id', 64, /^[A-Za-z0-9-]+$/),
+  'powerbi.dataset_id': text('powerbi.dataset_id', 64, /^[A-Za-z0-9-]+$/),
+  'powerbi.dataset_name': text('powerbi.dataset_name', 200),
+  'powerbi.tables': (v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) throw badRequest('powerbi.tables must be an object');
+    for (const k of Object.keys(v)) if (!PBI_TABLE_KEYS.includes(k)) throw badRequest(`powerbi.tables: unknown table key "${k}"`);
+    const cur = get('powerbi.tables', {}) || {};
+    const out = {};
+    for (const k of PBI_TABLE_KEYS) {
+      const raw = v[k] === undefined ? cur[k] : v[k];
+      const t = text(`powerbi.tables.${k}`, 4000)(raw);
+      if (t && !/^evaluate\b/i.test(t) && !PBI_TABLE_NAME.test(t)) {
+        throw badRequest(`powerbi.tables.${k} must be a table name or a DAX query that starts with EVALUATE`);
+      }
+      out[k] = t;
+    }
+    return out;
+  },
+  'powerbi.date_column': (v) => {
+    const t = text('powerbi.date_column', 100, PBI_TABLE_NAME)(v);
+    if (!t) throw badRequest('powerbi.date_column is required');
+    return t;
+  },
+  'powerbi.months_back': intRange('powerbi.months_back', 1, 60),
+  'powerbi.auto_promote': bool('powerbi.auto_promote'),
+  'powerbi.schedule': (v) => {
+    const t = text('powerbi.schedule', 5)(v);
+    if (t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw badRequest('powerbi.schedule must be blank or HH:MM (24 hour, Phoenix time)');
+    return t;
+  },
+  'powerbi.last_pull_at': (v) => (v === null || v === '' ? null : text('powerbi.last_pull_at', 40)(v)),
+  'powerbi.last_pull': (v) => {
+    if (v === null) return null;
+    if (typeof v !== 'object' || Array.isArray(v)) throw badRequest('powerbi.last_pull must be an object or null');
+    return v;
+  },
   'spend.seat_basis': oneOf('spend.seat_basis', ['licensed', 'active']),
   'spend.default_basis': oneOf('spend.default_basis', ['consumption', 'seat', 'total']),
   'cowork.rate': numRange('cowork.rate', 0, 1),
@@ -63,6 +122,7 @@ const VALIDATORS = {
 };
 
 function get(key, fallback) {
+  if (SECRET_KEYS.has(key)) return { set: !!getSecret(key) };
   const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key);
   if (!row) return fallback === undefined ? null : fallback;
   try { return JSON.parse(row.value); } catch (e) { return fallback === undefined ? null : fallback; }
@@ -74,12 +134,42 @@ function set(key, value) {
     .run(key, JSON.stringify(value));
 }
 
-function allRaw() {
+// Stored values exactly as written (secrets stay encrypted). Internal use only.
+function storedAll() {
   const out = {};
   for (const r of getDb().prepare('SELECT key, value FROM settings ORDER BY key').all()) {
     try { out[r.key] = JSON.parse(r.value); } catch (e) { out[r.key] = null; }
   }
   return out;
+}
+
+// Everything the API may show: secrets become {set: true|false}.
+function allRaw() {
+  const out = storedAll();
+  for (const k of SECRET_KEYS) out[k] = { set: typeof out[k] === 'string' && out[k] !== '' };
+  return out;
+}
+
+// Plain text of a secret, or '' when none is stored. Never log or return this.
+function getSecret(key) {
+  if (!SECRET_KEYS.has(key)) throw new Error(`${key} is not a secret key`);
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key);
+  if (!row) return '';
+  let v;
+  try { v = JSON.parse(row.value); } catch (e) { return ''; }
+  if (typeof v !== 'string' || v === '') return '';
+  return secrets.decrypt(v);
+}
+
+// Returns the value to store: undefined = keep what is there, '' = clear, else the ciphertext.
+function secretPatch(key, raw) {
+  if (raw === null) return ''; // null clears
+  if (raw === undefined || raw === '' || (typeof raw === 'object' && !Array.isArray(raw))) {
+    return undefined; // '' or the masked object {set: ...} keeps the stored secret
+  }
+  if (typeof raw !== 'string') throw badRequest(`${key} must be text`);
+  if (raw.length > 8192) throw badRequest(`${key} is too long`);
+  return secrets.encrypt(raw);
 }
 
 function checkValue(key, v) {
@@ -94,9 +184,14 @@ function update(body) {
   const cleaned = {};
   for (const [key, raw] of Object.entries(body)) {
     if (!/^[A-Za-z0-9_.-]{1,80}$/.test(key)) throw badRequest(`Bad settings key "${key}"`);
-    cleaned[key] = checkValue(key, raw);
+    if (SECRET_KEYS.has(key)) {
+      const p = secretPatch(key, raw);
+      if (p !== undefined) cleaned[key] = p;
+    } else {
+      cleaned[key] = checkValue(key, raw);
+    }
   }
-  const before = allRaw();
+  const before = storedAll();
   const tx = getDb().transaction(() => {
     for (const [k, v] of Object.entries(cleaned)) {
       if (JSON.stringify(before[k]) !== JSON.stringify(v)) changed.push(k);
@@ -108,4 +203,4 @@ function update(body) {
   return allRaw();
 }
 
-module.exports = { get, set, allRaw, update, VALIDATORS };
+module.exports = { get, set, allRaw, update, getSecret, SECRET_KEYS, VALIDATORS };

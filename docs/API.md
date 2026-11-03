@@ -97,3 +97,24 @@ Value conventions: money is USD numbers, pct is a percent number (11.3 = 11.3 pe
     cd backend && npm install && npm start            # port 3090
     node scripts/gen-fixture.js --seed-db --profile clean
     npm test
+
+## Power BI connector (CONTRACT section 13)
+
+Settings keys powerbi.* are read and written through /api/settings. powerbi.client_secret and
+powerbi.token are write-only: GET returns {set: true|false}; PUT with a string stores it
+encrypted (AES-256-GCM), with '' or the masked object keeps the stored value, with null clears it.
+Upstream failures (Azure AD, Power BI) answer 502 with the Power BI error text; secrets are redacted.
+Dataset rows (list, by id, summary.dataset) carry provider ('fixture' | 'powerbi' | 'import') and
+options as a parsed object.
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | /api/powerbi/test | {ok, auth: {ok, expires_in, error?}, workspace: {ok, name?, error?}, dataset: {ok, name?, error?}, tables: [{key, name, ok, rows? \| error? \| skipped?}], latest: {usage_max_date}}; 200 even when ok is false |
+| GET | /api/powerbi/datasets | [{id, name}] for the configured workspace; 502 on upstream failure |
+| POST | /api/powerbi/pull | body {} (optional {promote: bool}); {dataset_id, verdict, promoted, rows, duration_ms}; 400 not configured, 409 already running, 502 upstream; broadcasts import.progress |
+| GET | /api/powerbi/status | {configured, enabled, running, last_pull_at, last_pull, schedule, next_run_at} |
+
+SSE import.progress: {stage: auth\|usage\|people\|lookups\|normalize\|verify\|promote\|done\|error, table, chunk, rows, message}.
+A pull always ends with stage done (rows = usage rows) or stage error (message).
+Environment: AIXP_SECRET_KEY (32 bytes, hex or base64) else a key file beside the database
+(backend/data/.secret-key); POWERBI_LOGIN_URL and POWERBI_API_URL override the Azure AD and Power BI hosts (tests).

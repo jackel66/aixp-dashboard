@@ -577,3 +577,83 @@ link on user rows via useDrawers().openUser). DateRangePicker gains the "24 hour
 RangeNote. Mock files: src/mock/reports.json and src/mock/report-<id>.json for at least
 users_top, platforms_summary, models_cost, costs_monthly (api.js mock mapping: /reports ->
 reports.json, /reports/<id> -> report-<id>.json).
+
+## 13. Power BI connector (addendum 2026-11-03, builders G backend and H frontend)
+
+Purpose: pull real rows from the AI Platform Economics semantic model through the Power BI
+REST API and load them through the existing staging -> normalize -> verify -> promote seam
+(section 5). The fixture path stays; a dataset's source becomes 'import' with
+options_json.provider = 'powerbi'.
+
+Power BI facts (binding): auth is Azure AD client credentials, POST
+https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token with scope
+https://analysis.windows.net/powerbi/api/.default; queries run through POST
+https://api.powerbi.com/v1.0/myorg/groups/<workspaceId>/datasets/<datasetId>/executeQueries
+with body {queries: [{query: '<DAX>'}], serializerSettings: {includeNulls: true}}; the
+answer is results[0].tables[0].rows, each row an object whose keys look like
+"Usage[Date]" (headerKey already strips the Table[...] wrapper); one query returns at most
+100,000 rows and 15 MB, so pulls are chunked. Discovery: GET
+.../groups/<workspaceId>/datasets lists {id, name}. The service principal must be allowed
+by the tenant setting "Service principals can use Fabric APIs" and be a Member or
+Contributor of the workspace; no delegated permission is needed. A pasted user bearer token
+is accepted as a second auth mode for a first test. Known ids from the primer, used as
+placeholders only: tenant 41b8c056-2dc3-438d-99ee-61e00287adfe, workspace
+5e413bf1-69f1-4c08-9050-e320acd1e78c; the dataset id is discovered.
+
+Settings keys (defaults.js, validators in settings.js): powerbi.enabled false,
+powerbi.auth_mode 'service_principal' | 'token', powerbi.tenant_id, powerbi.client_id,
+powerbi.workspace_id, powerbi.dataset_id, powerbi.dataset_name, powerbi.tables
+{usage: 'Usage', people: 'People', seat_rate: 'SeatRate', region_map: 'RegionMap',
+lob_cg_map: 'LobCgMap'} (table name or a full DAX query starting with EVALUATE; blank
+= skip that table and keep the fixture's lookup rows from the active dataset),
+powerbi.date_column 'Date', powerbi.months_back 13, powerbi.auto_promote true (promote
+when the verdict is not fail; a fail stays verified for a human to promote with force),
+powerbi.schedule '' or 'HH:MM' (daily, Phoenix), powerbi.last_pull_at, powerbi.last_pull
+{dataset_id, verdict, rows, duration_ms, error}. Secrets powerbi.client_secret and
+powerbi.token are stored ENCRYPTED (services/secrets.js, AES-256-GCM, key from env
+AIXP_SECRET_KEY or a generated backend/data/.secret-key file, 0600), never logged, and
+GET /api/settings returns them as {set: true|false}; PUT with '' clears and the masked
+object keeps.
+
+Routes (routes/powerbi.js, all admin = password-gated like everything else):
+POST /api/powerbi/test -> {ok, auth: {ok, expires_in}, workspace: {ok, name},
+dataset: {ok, name}, tables: [{key, name, ok, rows | error}], latest: {usage_max_date}}
+GET /api/powerbi/datasets -> [{id, name}] for the configured workspace
+POST /api/powerbi/pull {promote?: bool} -> {dataset_id, verdict, promoted, rows,
+duration_ms}; 409 when a pull is already running; progress by SSE import.progress
+{stage: auth|usage|people|lookups|normalize|verify|promote|done|error, table, chunk,
+rows, message}; the dataset is created with source 'import', label 'Power BI <dataset
+name> <YYYY-MM-DD HH:MM>'; on error the dataset is marked failed with note = message.
+GET /api/powerbi/status -> {configured, enabled, running, last_pull_at, last_pull,
+schedule, next_run_at}
+
+Chunking (services/powerbiClient.js and powerbiImport.js): Usage is pulled one calendar
+month at a time from months_back months before asOf (asOf = MAX of the date column, asked
+first with EVALUATE ROW("d", MAX('Usage'[Date]))) using CALCULATETABLE('Usage',
+'Usage'[Date] >= DATE(y,m,1) && 'Usage'[Date] < DATE(y,m+1,1)); a month answering 100,000
+rows is split per platform (FILTER on the Platform column); a month+platform still at
+the cap is split by half-month; still at the cap = error naming the slice. People and
+lookups are pulled whole. Date values arrive as ISO strings ("2026-10-30T00:00:00"),
+numbers as numbers; loadTables stores text as given. Rate limits: at most 4 queries in
+flight (core/concurrency-style mapLimit), retry 429 and 5xx three times with backoff,
+give up on 401/403 with the Power BI error text in the message. Token cached until 5
+minutes before expiry.
+
+Frontend (builder H): Settings gains a "Data source" section (rail item first, above
+Spend basis): mode toggle Fixture | Power BI; Power BI panel with auth mode, tenant id,
+client id, client secret (password field, "set" badge when stored, blank keeps), or
+bearer token; workspace id; dataset picker (Discover button fills a select from GET
+/powerbi/datasets); tables table (key, name or DAX, Test per row); months back; auto
+promote; schedule time; buttons Test connection (renders the test result as a checklist
+with StatusChips), Pull now (confirm Dialog, then a progress panel driven by SSE
+import.progress with stage chips and a row counter, ends in a toast and a link to Data
+quality), last pull summary. Landing and Overview as-of chip tooltip and the Data
+quality datasets table show the dataset source ("Power BI pull" vs "Fixture"). Settings >
+Fixtures stays. Help text under the panel states the tenant setting and workspace role
+the service principal needs, in two sentences.
+
+Tests (builder G): tests/powerbi.test.js with a fake Power BI server (express on port 0:
+token endpoint, datasets list, executeQueries that serves fixture rows in Power BI
+shape with "Usage[Date]" keys and enforces the 100,000 cap so the per-platform split is
+exercised); test, pull end to end to an active dataset with verdict, secret encryption
+round trip and masking, 409 while running, failure path marks the dataset failed.

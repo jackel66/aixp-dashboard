@@ -10,6 +10,7 @@ const router = express.Router();
 const row = (d) => ({
   id: d.id, label: d.label, source: d.source, seed: d.seed, status: d.status, verdict: d.verdict, created_at: d.created_at,
   verified_at: d.verified_at, promoted_at: d.promoted_at, archived_at: d.archived_at, platforms: d.platforms,
+  provider: d.provider, options: d.options,
 });
 
 function idParam(v) {

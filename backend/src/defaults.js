@@ -37,6 +37,23 @@ const DEFAULTS = {
   'fixture.options': { seed: 20261103, months: 12, people: 400, profile: 'defective' },
   'datasets.keep': 5,
   'lobcg.seed': LOBCG_SEED,
+  // Power BI connector (CONTRACT section 13). The two secrets are stored encrypted; '' = not set.
+  'powerbi.enabled': false,
+  'powerbi.auth_mode': 'service_principal',
+  'powerbi.tenant_id': '',
+  'powerbi.client_id': '',
+  'powerbi.client_secret': '',
+  'powerbi.token': '',
+  'powerbi.workspace_id': '',
+  'powerbi.dataset_id': '',
+  'powerbi.dataset_name': '',
+  'powerbi.tables': { usage: 'Usage', people: 'People', seat_rate: 'SeatRate', region_map: 'RegionMap', lob_cg_map: 'LobCgMap' },
+  'powerbi.date_column': 'Date',
+  'powerbi.months_back': 13,
+  'powerbi.auto_promote': true,
+  'powerbi.schedule': '',
+  'powerbi.last_pull_at': null,
+  'powerbi.last_pull': null,
 };
 
 module.exports = { DEFAULTS, LOBCG_SEED };

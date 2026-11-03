@@ -137,7 +137,7 @@ function summary(query) {
   return {
     asOf: ctx.asOf,
     dataset: {
-      id: ds.id, label: ds.label, source: ds.source, seed: ds.seed, promoted_at: ds.promoted_at, verdict: ds.verdict,
+      id: ds.id, label: ds.label, source: ds.source, provider: ds.provider, options: ds.options, seed: ds.seed, promoted_at: ds.promoted_at, verdict: ds.verdict,
       counts: { usage_rows: usageRows, people: peopleCount, platforms: (ds.platforms || []).length },
     },
     range: { from: ctx.from, to: ctx.to },

@@ -21,6 +21,7 @@ function mountRoutes(api) {
   api.use('/settings', require('./routes/settings'));
   api.use('/export', require('./routes/export'));
   api.use('/reports', require('./routes/reports'));
+  api.use('/powerbi', require('./routes/powerbi'));
 }
 
 function createApp() {
