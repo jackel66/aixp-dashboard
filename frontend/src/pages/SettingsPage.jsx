@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Navigate, useParams, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader.jsx';
+import DataSourceSection from '../components/settings/DataSourceSection.jsx';
 import BasisSection from '../components/settings/BasisSection.jsx';
 import SeatRatesSection from '../components/settings/SeatRatesSection.jsx';
 import LobMapSection from '../components/settings/LobMapSection.jsx';
@@ -9,6 +10,7 @@ import FixturesSection from '../components/settings/FixturesSection.jsx';
 import ThemeSection from '../components/settings/ThemeSection.jsx';
 
 const SECTIONS = [
+  { id: 'source', label: 'Data source', Cmp: DataSourceSection },
   { id: 'basis', label: 'Spend basis', Cmp: BasisSection },
   { id: 'seat-rates', label: 'Seat rates', Cmp: SeatRatesSection },
   { id: 'lob-cg', label: 'LOB-CG map', Cmp: LobMapSection },

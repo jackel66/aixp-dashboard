@@ -10,6 +10,7 @@ import Dialog from '../components/ui/Dialog.jsx';
 import Chip from '../components/ui/Chip.jsx';
 import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 import { useToast } from '../components/ui/Toast.jsx';
+import { datasetSource } from '../components/AsOfChip.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
 import { chipStatus } from '../drawers/EvidenceDrawer.jsx';
 import { useQuery, clearQueryCache } from '../lib/query.js';
@@ -91,7 +92,7 @@ function Datasets({ q }) {
   const d = q.data;
   const columns = [
     { key: 'label', label: 'Dataset', render: (r) => (<span className="inline-flex items-center gap-2">{r.label}{r.id === d.active_id && <Chip tone="accent">current</Chip>}</span>) },
-    { key: 'source', label: 'Source', render: (r) => r.source },
+    { key: 'source', label: 'Source', render: (r) => { const s = datasetSource(r); return s.kind === 'powerbi' ? 'Power BI pull' : s.kind === 'fixture' ? 'Fixture' : (s.label || r.source); } },
     { key: 'status', label: 'Status', render: (r) => r.status },
     { key: 'verdict', label: 'Verdict', render: (r) => (r.verdict ? <StatusChip status={r.verdict} /> : <span className="text-muted">Not verified</span>) },
     { key: 'created_at', label: 'Created', render: (r) => dateLong(r.created_at) },

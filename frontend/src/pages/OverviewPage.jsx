@@ -11,6 +11,7 @@ import SegmentedControl from '../components/ui/SegmentedControl.jsx';
 import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
 import Chip from '../components/ui/Chip.jsx';
+import AsOfChip from '../components/AsOfChip.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
 import { useQuery } from '../lib/query.js';
 import { useUrlFilters, apiParams } from '../lib/filters.js';
@@ -42,7 +43,7 @@ export default function OverviewPage() {
     <div className="page">
       <PageHeader eyebrow="Executive view" title="Overview"
         description={s ? 'Spend and consumption across four platforms, ' + (shownRange.from === shownRange.to ? '24 hours to ' + dateLong(shownRange.to) : dateLong(shownRange.from) + ' to ' + dateLong(shownRange.to)) + '.' : 'Spend and consumption across four platforms.'}
-        right={s ? <Chip tone="outline">As of {dateLong(s.asOf)}</Chip> : null} />
+        right={s ? <AsOfChip asOf={s.asOf} dataset={s.dataset} /> : null} />
       <FilterBar values={values} set={set} asOf={s ? s.asOf : ''} range={shownRange} showRange={!!s} />
       <DataState q={summary} skeleton={<div className="stack-32"><SkeletonCard height={110} /><SkeletonCard height={300} /></div>}>
         {(sm) => {

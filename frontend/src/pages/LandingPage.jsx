@@ -12,6 +12,7 @@ import { DeltaChip } from '../components/analytics/StatTile.jsx';
 import SegmentedControl from '../components/ui/SegmentedControl.jsx';
 import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 import Chip from '../components/ui/Chip.jsx';
+import AsOfChip from '../components/AsOfChip.jsx';
 import { useQuery } from '../lib/query.js';
 import { useUrlFilters } from '../lib/filters.js';
 import { container } from '../lib/motion.js';
@@ -34,7 +35,7 @@ export default function LandingPage() {
         display
         right={(
           <>
-            {summary.data && <Chip tone="outline">As of {dateLong(summary.data.asOf)}</Chip>}
+            {summary.data && <AsOfChip asOf={summary.data.asOf} dataset={summary.data.dataset} />}
             <SegmentedControl label="Spend basis" value={basis} options={BASES} onChange={(v) => set({ basis: v })} />
           </>
         )}
