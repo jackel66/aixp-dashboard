@@ -101,4 +101,38 @@ function flatten(report, d) {
   };
 }
 
-module.exports = { toCsv, flatten, cell };
+// A report run (reportRunner.run) -> {columns, rows}. units become <key> and <key>_unit, delta becomes
+// <key>_now, _prev, _delta and _pct. Totals are appended as a last row when present.
+function flattenReport(rep) {
+  const columns = [];
+  const spec = [];
+  for (const c of rep.columns) {
+    if (c.type === 'units') {
+      columns.push(c.key, `${c.key}_unit`);
+    } else if (c.type === 'delta') {
+      columns.push(`${c.key}_now`, `${c.key}_prev`, `${c.key}_delta`, `${c.key}_pct`);
+    } else columns.push(c.key);
+    spec.push(c);
+  }
+  function shape(r) {
+    const o = {};
+    for (const c of spec) {
+      const v = r[c.key];
+      if (c.type === 'units') {
+        o[c.key] = v ? v.value : null;
+        o[`${c.key}_unit`] = v ? v.unit : null;
+      } else if (c.type === 'delta') {
+        o[`${c.key}_now`] = v ? v.now : null;
+        o[`${c.key}_prev`] = v ? v.prev : null;
+        o[`${c.key}_delta`] = v ? v.delta : null;
+        o[`${c.key}_pct`] = v ? v.pct : null;
+      } else o[c.key] = v === undefined ? null : v;
+    }
+    return o;
+  }
+  const rows = rep.rows.map(shape);
+  if (rep.totals) rows.push(shape(rep.totals));
+  return { columns, rows };
+}
+
+module.exports = { toCsv, flatten, flattenReport, cell };

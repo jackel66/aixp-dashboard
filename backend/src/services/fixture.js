@@ -271,8 +271,23 @@ function generate(opts = {}) {
     note(pid, d);
   }
 
+  // Lifespans: some people join part way through the period and some stop early, so that
+  // new-user and inactive-user reports have rows. Own rng stream; ghosts keep the full span.
   for (const p of persons) {
-    for (const dd of days) {
+    p.fromIdx = -Infinity;
+    p.toIdx = Infinity;
+    if (p.ghost || !days.length) continue;
+    const r = rngFor(seed, 7, p.i);
+    const lastIdx = days[days.length - 1].idx; // anchored to the end date so a shorter run matches the overlap
+    const a = r();
+    const b = r();
+    if (a < 0.12) p.fromIdx = lastIdx - Math.floor(30 + 270 * b);
+    else if (a < 0.22) p.toIdx = lastIdx - Math.floor(25 + 200 * b);
+  }
+
+  for (const p of persons) {
+    const pdays = days.filter((dd) => dd.idx >= p.fromIdx && dd.idx <= p.toIdx);
+    for (const dd of pdays) {
       const d = dd.d;
       const wf = WEEKDAY_FACTOR[dd.wd];
 
@@ -359,7 +374,7 @@ function generate(opts = {}) {
         });
         note('cowork', d);
       };
-      for (const dd of days) {
+      for (const dd of pdays) {
         if (dd.ym !== curYm) { closeMonth(); curYm = dd.ym; cum = 0; lastDate = null; }
         const r = rngFor(seed, 40, p.i, dd.idx);
         if (r() >= p.baseP * WEEKDAY_FACTOR[dd.wd] * 0.9) continue;

@@ -20,6 +20,7 @@ function mountRoutes(api) {
   api.use('/fixtures', require('./routes/fixtures'));
   api.use('/settings', require('./routes/settings'));
   api.use('/export', require('./routes/export'));
+  api.use('/reports', require('./routes/reports'));
 }
 
 function createApp() {

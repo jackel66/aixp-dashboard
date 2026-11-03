@@ -82,6 +82,16 @@ builder B as routes land. Every error is {error: "message"} with an HTTP status.
 | PUT | /api/settings/lob-cg-map | {rows}; rebuilds people.lob_cg and rollup_org_month |
 | GET | /api/export/:report.csv | report = summary, trend, platform (needs platform=<id>), organization, models, users; first line is "# " + caveat; text cells starting with = + - @ get a leading apostrophe; consumption always has a unit column |
 
+## Reports
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | /api/reports | catalogue: {groups: [{id, title}], reports: [{id, group, title, description, params, columns: [{key, label, type}]}]}; 17 reports in groups users, platforms, models, costs |
+| GET | /api/reports/:id | query from, to, platform (repeatable), basis, dim (lob_cg, region, sbl, person_type), limit (1 to 500, default 50); only the params a report lists apply. Returns {id, title, description, asOf, range, params, columns, rows, totals, chart, notes}; 404 unknown id, 400 bad params |
+| GET | /api/export/report/:id.csv | same params; first line is "# " + caveat; units columns become <key> and <key>_unit, delta columns become <key>_now, _prev, _delta, _pct; the totals row is appended last |
+
+Value conventions: money is USD numbers, pct is a percent number (11.3 = 11.3 percent, also delta.pct), units is {value, unit}, delta is {now, prev, delta, pct}. totals, when present, is row shaped (keyed by column key, first text column holds the label). User reports carry an extra person_key on every row (not a column). models_adoption (keys week, u_0..u_7) and models_by_group (group, usd_0..usd_7, total) return the model columns in the response columns; the catalogue lists the fixed ones only. A one-day range (from == to) is valid on every route and report; the previous window is the previous day.
+
 ## Running
 
     cd backend && npm install && npm start            # port 3090

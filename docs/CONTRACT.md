@@ -513,3 +513,67 @@ never import D's drawers directly.
   console errors in light and dark at 1440 and 1024; reduced motion honoured; keyboard
   through every drawer; URL round trips; units audit (no unlabelled or combined
   token+credit figure); branding grep clean; ASCII scan clean.
+
+## 12. Reports and the 24 hour range (addendum 2026-11-03, builders E backend and F frontend)
+
+Range presets everywhere a DateRangePicker appears: "24 hours" (from = to = asOf, one
+day), "7 days", "30 days", "90 days", "6 months", "12 months", "Custom". A one-day range
+is valid on every route (from == to); prior period is the previous day; day grain is
+forced on trend charts when the range is under 14 days. The default stays 90 days.
+
+A report is a parameterised table with an optional chart and a CSV export. Catalogue and
+shapes (backend/src/services/reportCatalog.js owns the list; the frontend reads it from the
+API, never hard-codes it):
+
+GET /api/reports -> {groups: [{id: users|platforms|models|costs, title}], reports: [{id,
+group, title, description, params: ['range','platform','basis','dim','limit'] subset,
+columns: [{key, label, type: text|money|number|units|pct|date|platform|delta}]}]}
+GET /api/reports/:id?from&to&platform&basis&dim&limit -> {id, title, description, asOf,
+range: {from, to}, params: {...resolved}, columns, rows: [{...}], totals: {...} | null,
+chart: {type: bar|line|stacked, labels: [], series: [{label, data: [], platform: id|null}]}
+| null, notes: [string]}. Units columns carry {value, unit} objects; money columns carry
+numbers in USD; delta columns carry {now, prev, delta, pct}. limit default 50, max 500.
+GET /api/export/report/:id.csv same params; first line "# " + CAVEAT.
+
+| id | group | rows | columns | chart |
+|---|---|---|---|---|
+| users_top | users | top users by spend in range | rank, user, lob_cg, region, usd, per-platform usd, active_days, share | bar top 10 |
+| users_new | users | users whose first activity in the dataset falls in range | user, lob_cg, first_seen, first_platform, usd_since, platforms | line new users per week |
+| users_inactive | users | users active in the 90 days before the range but not in it | user, lob_cg, last_seen, days_silent, usd_before | none |
+| users_multi_platform | users | users active on 2+ platforms | user, lob_cg, platform_count, per-platform usd, usd | bar count by platform_count |
+| users_by_group | users | active users and spend per dim (default lob_cg; dim param) | group, users, usd, usd_per_user, share | bar usd per group |
+| users_unmatched | users | usage keys absent from People | person_key, platforms, rows, usd, first_seen, last_seen | none |
+| platforms_summary | platforms | one row per platform | platform, as_of, lag_days, consumption_usd, seat_usd, total_usd, consumption {value,unit}, active_users, usd_per_active_user, licensed_seats, seat_utilisation_pct | bar total usd |
+| platforms_monthly | platforms | month x platform spend (basis) | month, per-platform usd, total, delta vs previous month | stacked by platform |
+| platforms_freshness | platforms | per platform | platform, as_of, lag_days, stale, coverage_from, coverage_to, rows, checks_failed, checks_warn | none |
+| platforms_seat_utilisation | platforms | platform x month | platform, month, licensed_seats, active_people, utilisation_pct, seat_usd, consumption_usd, usd_per_active | line utilisation per platform |
+| models_cost | models | one row per platform+model | platform, model, usd, consumption {value,unit}, requests, users, cost_per_million (token platforms), share | bar usd top 10 |
+| models_adoption | models | week x model active users (top 8 models) | week, per-model users | line |
+| models_by_group | models | dim x model spend (top 8 models, dim param default lob_cg) | group, per-model usd, total | stacked |
+| costs_monthly | costs | one row per month in range | month, consumption_usd, seat_usd, total_usd, delta_total, active_users, usd_per_user | stacked consumption+seat |
+| costs_by_group | costs | dim rows (default lob_cg) | group, consumption_usd, seat_usd (allocated), total_usd, share, users, usd_per_user | bar |
+| costs_movers | costs | platform and group rows ranked by absolute change vs the previous window | kind, name, now, prev, delta, pct | bar delta |
+| costs_per_user | costs | per platform | platform, active_users, usd, usd_per_user, consumption_per_user {value,unit} | bar usd_per_user |
+
+Rules: spend follows the basis param where the row is a spend figure (seat allocation as
+in /api/organization); tokens and credits are never summed; every report answers under
+300 ms warm on the default fixture; reports read rollup_* only (usage only for
+users_unmatched first/last seen and models requests if not in rollups). Builder E owns
+backend/src/services/reportCatalog.js, services/reportRunner.js, routes/reports.js, the
+report branch of routes/export.js, tests/reportsCatalog.test.js (every report answers with
+its declared columns on a seeded fixture, one-day range works, CSV first line). Builder E
+also allows from == to in measures.resolve if anything rejects it (it does not today) and
+adds "7 days" nothing server-side (ranges are client presets).
+
+Frontend (builder F): Sidebar gets "Reports" after Data quality; routes /reports (catalogue:
+four groups of cards with title and description, card hover shows the columns, click opens
+the report) and /reports/:id (PageHeader with the report title, FilterBar with range,
+platform and basis where the report's params allow, dim SegmentedControl when 'dim' is a
+param, the chart in a Card when present, DataTable of rows with column types rendered
+through lib/format.js and UnitBadge, totals row when present, notes under the table,
+Export CSV anchor to /api/export/report/:id.csv with the current params, "Open in users"
+link on user rows via useDrawers().openUser). DateRangePicker gains the "24 hours" and
+"7 days" presets (values '1' and '7'); a one-day range shows "24 hours to <date>" in the
+RangeNote. Mock files: src/mock/reports.json and src/mock/report-<id>.json for at least
+users_top, platforms_summary, models_cost, costs_monthly (api.js mock mapping: /reports ->
+reports.json, /reports/<id> -> report-<id>.json).
