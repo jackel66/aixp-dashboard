@@ -1,6 +1,14 @@
 export { default as Button } from './Button.jsx';
-export { Chip, RagChip, MovementChip, StageChip } from './Chip.jsx';
+export { Chip } from './Chip.jsx';
 export { default as Dialog } from './Dialog.jsx';
 export { default as Drawer } from './Drawer.jsx';
 export { default as Tooltip } from './Tooltip.jsx';
+export { default as HoverCard } from './HoverCard.jsx';
+export { SkeletonCard, SkeletonRows } from './Skeleton.jsx';
+export { default as EmptyState } from './EmptyState.jsx';
+export { default as UnitBadge } from './UnitBadge.jsx';
+export { default as StatusChip } from './StatusChip.jsx';
+export { default as SegmentedControl } from './SegmentedControl.jsx';
+export { default as DateRangePicker } from './DateRangePicker.jsx';
+export { default as useFocusTrap } from './useFocusTrap.js';
 export { ToastProvider, useToast } from './Toast.jsx';

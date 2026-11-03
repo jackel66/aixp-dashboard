@@ -1,7 +1,8 @@
 import { Chart, CategoryScale, LinearScale, LogarithmicScale, BarElement, ArcElement, LineElement, PointElement, Tooltip, Legend, Animation, Filler } from 'chart.js';
+import { money } from '../../lib/format.js';
 
-const VL_FONT = '"Open Sans", ui-sans-serif, system-ui, sans-serif';
-const VL_INK = '#242b42';
+// Theme values the valueLabels plugin reads at draw time. syncChartTheme() refreshes them.
+const vl = { font: '"Inter", ui-sans-serif, system-ui, sans-serif', ink: '#0b0b0b', onFill: '#ffffff' };
 
 function vlDrawBar(chart, el, text, horizontal, color) {
   const c = chart.ctx;
@@ -9,14 +10,14 @@ function vlDrawBar(chart, el, text, horizontal, color) {
   const p = el.getProps(['x', 'y', 'base'], true);
   if (![p.x, p.y, p.base].every(Number.isFinite)) return;
   c.save();
-  c.font = '600 10px ' + VL_FONT;
+  c.font = '600 10px ' + vl.font;
   c.textBaseline = 'middle';
   const w = c.measureText(text).width;
   if (horizontal) {
     const end = Math.max(p.x, p.base);
     const len = Math.abs(p.x - p.base);
     if (area.right - end < 36 && len > w + 8) {
-      c.fillStyle = '#ffffff'; c.textAlign = 'right'; c.fillText(text, end - 4, p.y);
+      c.fillStyle = vl.onFill; c.textAlign = 'right'; c.fillText(text, end - 4, p.y);
     } else {
       c.fillStyle = color; c.textAlign = 'left'; c.fillText(text, end + 4, p.y);
     }
@@ -24,7 +25,7 @@ function vlDrawBar(chart, el, text, horizontal, color) {
     const top = Math.min(p.y, p.base);
     const h = Math.abs(p.base - p.y);
     if (top - 13 < area.top && h > 18) {
-      c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.fillText(text, p.x, top + 9);
+      c.fillStyle = vl.onFill; c.textAlign = 'center'; c.fillText(text, p.x, top + 9);
     } else {
       c.fillStyle = color; c.textAlign = 'center'; c.fillText(text, p.x, top - 8);
     }
@@ -37,7 +38,7 @@ function vlBars(chart, opts) {
   const valueScale = chart.scales[horizontal ? 'x' : 'y'];
   const stacked = !!(valueScale && valueScale.options && valueScale.options.stacked);
   const fmt = typeof opts.format === 'function' ? opts.format : (v) => String(v);
-  const color = opts.color || VL_INK;
+  const color = opts.color || vl.ink;
   const stacks = {};
   const items = [];
   chart.data.datasets.forEach((ds, di) => {
@@ -74,17 +75,18 @@ function vlCenter(chart, opts) {
   ds.data.forEach((v, i) => { if (chart.getDataVisibility(i)) total += Number(v) || 0; });
   const a = chart.chartArea;
   const c = chart.ctx;
+  const text = typeof opts.centerFormat === 'function' ? opts.centerFormat(total) : String(total);
   c.save();
-  c.font = '700 ' + (opts.centerSize || 16) + 'px ' + VL_FONT;
-  c.fillStyle = '#070f29';
+  c.font = '700 ' + (opts.centerSize || 16) + 'px "Sora", ' + vl.font;
+  c.fillStyle = vl.ink;
   c.textAlign = 'center';
   c.textBaseline = 'middle';
-  c.fillText(String(total), (a.left + a.right) / 2, (a.top + a.bottom) / 2);
+  c.fillText(text, (a.left + a.right) / 2, (a.top + a.bottom) / 2);
   c.restore();
 }
 
 // Inline value-label plugin. Enable per chart: options.plugins.valueLabels = { enabled: true,
-// format: (value, ctx) => string, color?, center? (doughnut total), centerSize? }.
+// format: (value, ctx) => string, color?, center? (doughnut total), centerFormat?, centerSize? }.
 const valueLabels = {
   id: 'valueLabels',
   defaults: { enabled: false },
@@ -109,9 +111,9 @@ Chart.register(CategoryScale, LinearScale, LogarithmicScale, BarElement, ArcElem
 // Animation engine guard. Chart.js picks an interpolator from the TYPE of a property's starting
 // value; for anything that is not a number, boolean or parsable colour there is none, and the
 // next frame throws "this._fn is not a function" inside the animator, which runs every chart in
-// one loop, so every chart on the page freezes or goes blank (seen on Doug's Chrome 155,
-// 2026-10-20). Snap such a property to its end value instead and record what it was.
-if (Animation && Animation.prototype && !Animation.prototype.__cgGuarded) {
+// one loop, so every chart on the page freezes or goes blank. Snap such a property to its end
+// value instead and record what it was.
+if (Animation && Animation.prototype && !Animation.prototype.__aixpGuarded) {
   const originalTick = Animation.prototype.tick;
   const seen = new Set();
   Animation.prototype.tick = function guardedTick(date) {
@@ -129,63 +131,50 @@ if (Animation && Animation.prototype && !Animation.prototype.__cgGuarded) {
     }
     return originalTick.call(this, date);
   };
-  Animation.prototype.__cgGuarded = true;
+  Animation.prototype.__aixpGuarded = true;
 }
 
-Chart.defaults.font.family = '"Open Sans", ui-sans-serif, system-ui, sans-serif';
+Chart.defaults.font.family = vl.font;
 Chart.defaults.font.size = 12;
-Chart.defaults.color = '#666666';
-// Animation is off on purpose: Chart.js runs every animated chart through one shared frame
-// loop, and a failure anywhere in that loop leaves every chart frozen or blank until a reload
-// (seen on Doug's browser, never in headless QA). Synchronous draws cannot get into that state.
-// Mutate, never replace: Chart.js copies ONLY the keys of defaults.animation (delay, duration,
-// easing, fn, from, loop, to, type) into each animated property's config. Replacing the object
-// with { duration, easing } dropped "type", so colour properties lost their interpolator and the
-// first colour change (a hover highlight) threw inside the shared animator and froze every chart.
+// Mutate, never replace: Chart.js copies ONLY the keys of defaults.animation into each animated
+// property's config. Replacing the object drops "type", colour properties lose their interpolator
+// and the first colour change (a hover highlight) throws inside the shared animator.
 Chart.defaults.animation.duration = 400;
 Chart.defaults.animation.easing = 'easeOutQuart';
 Chart.defaults.maintainAspectRatio = false;
 
-export const BRAND = {
-  sky: '#24b1e6', steel: '#1f96c3', navy: '#070f29', slate: '#025b76',
-  teal: '#00ad8c', orange: '#f9ac33', red: '#ed6363', grey: '#ebebeb'
-};
-
-export const RAG_FILL = {
-  Green: '#c6e0b4', Amber: '#ffe699', Red: '#f4cccc', Gray: '#d9e1f2', 'Not Updated': '#d9e1f2'
-};
-export const RAG_LINE = {
-  Green: '#7fb069', Amber: '#e0b400', Red: '#ed6363', Gray: '#8a98b8', 'Not Updated': '#8a98b8'
-};
-export const MOVE_COLOR = {
-  Advanced: '#7fb069', Unchanged: '#e0b400', Slipped: '#ed6363', New: '#24b1e6', 'Not Updated': '#8a98b8'
-};
-export const BAND_COLOR = { strong: '#00ad8c', drifting: '#f9ac33', weak: '#ed6363' };
-
-export function compactMoney(v) {
-  const n = Number(v) || 0;
-  const a = Math.abs(n);
-  if (a >= 1e6) return '$' + (n / 1e6).toFixed(a >= 1e7 ? 0 : 1) + 'M';
-  if (a >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
-  return '$' + n;
+function cssv(name, fallback) {
+  if (typeof document === 'undefined') return fallback;
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
 }
-// Legend for doughnuts: "Name  count (pct%)" instead of arc labels.
-export function donutLegend() {
-  return {
-    position: 'bottom',
-    labels: {
-      boxWidth: 12, boxHeight: 12,
-      generateLabels(chart) {
-        const base = Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart);
-        const ds = chart.data.datasets[0];
-        const total = ds ? ds.data.reduce((a, v) => a + (Number(v) || 0), 0) : 0;
-        return base.map((item) => {
-          const n = ds ? Number(ds.data[item.index]) || 0 : 0;
-          const pc = total ? Math.round((n / total) * 100) : 0;
-          return { ...item, text: item.text + '  ' + n + ' (' + pc + '%)' };
-        });
-      }
-    }
-  };
+
+// Read the live CSS tokens into Chart.js defaults. Called by ThemeProvider on mount and on every
+// theme change. Duration drops to 0 under reduced motion (a mutation, not a new object).
+export function syncChartTheme() {
+  const muted = cssv('--muted', '#52514e');
+  const line = cssv('--line', '#e1dfd9');
+  const surface = cssv('--bg-1', '#fcfcfb');
+  const ink = cssv('--ink', '#0b0b0b');
+  vl.ink = ink;
+  vl.onFill = '#ffffff';
+  Chart.defaults.color = muted;
+  Chart.defaults.borderColor = line;
+  Chart.defaults.font.family = vl.font;
+  const tt = Chart.defaults.plugins.tooltip;
+  tt.backgroundColor = surface;
+  tt.titleColor = ink;
+  tt.bodyColor = muted;
+  tt.borderColor = line;
+  tt.borderWidth = 1;
+  tt.padding = 10;
+  tt.cornerRadius = 8;
+  tt.boxPadding = 4;
+  Chart.defaults.plugins.legend.labels.color = muted;
+  const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  Chart.defaults.animation.duration = reduce ? 0 : 400;
+  Chart.getChart && Object.values(Chart.instances || {}).forEach((c) => { try { c.update('none'); } catch (e) { /* chart gone */ } });
 }
+
+export const compactMoney = money;
 export default Chart;

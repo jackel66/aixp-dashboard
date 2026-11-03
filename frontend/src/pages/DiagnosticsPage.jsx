@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { clearErrors, environmentReport, getErrors, onErrors } from '../lib/errlog.js';
 import { api } from '../lib/api.js';
+import PageHeader from '../components/PageHeader.jsx';
+import Button from '../components/ui/Button.jsx';
 
 // Everything needed to report a page problem: environment, server build, captured errors.
 export default function DiagnosticsPage() {
@@ -12,7 +14,7 @@ export default function DiagnosticsPage() {
 
   const env = environmentReport();
   const report = [
-    'CG Deal Tracker diagnostics',
+    'AIxP dashboard diagnostics',
     'page build: ' + env.build,
     'server build: ' + (server && server.buildId ? server.buildId : (server && server.error) || 'loading'),
     'user agent: ' + env.userAgent,
@@ -29,14 +31,13 @@ export default function DiagnosticsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-extrabold text-t3-navy m-0">Diagnostics</h1>
-      <p className="text-sm text-t3-grey mt-1 mb-4">If a chart or page misbehaves, open this page in the same tab, press Copy, and paste the text into chat.</p>
+    <div className="page" style={{ maxWidth: 960 }}>
+      <PageHeader title="Diagnostics" description="If a chart or page misbehaves, open this page in the same tab, press Copy, and paste the text into chat." />
       <div className="flex gap-2 mb-3">
-        <button type="button" onClick={copy} className="rounded-full bg-t3-sky hover:bg-t3-steel text-white text-sm font-semibold px-4 py-1.5 border-0 cursor-pointer">{copied ? 'Copied' : 'Copy'}</button>
-        <button type="button" onClick={() => { clearErrors(); }} className="rounded-full bg-white text-t3-navy text-sm font-semibold px-4 py-1.5 border border-t3-smoke cursor-pointer">Clear errors</button>
+        <Button onClick={copy}>{copied ? 'Copied' : 'Copy'}</Button>
+        <Button variant="secondary" onClick={() => clearErrors()}>Clear errors</Button>
       </div>
-      <pre className="bg-[#f5f5f5] border border-t3-smoke rounded-lg p-4 text-xs whitespace-pre-wrap break-words">{report}</pre>
+      <pre className="card t-small" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{report}</pre>
     </div>
   );
 }

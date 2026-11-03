@@ -1,19 +1,20 @@
 import React from 'react';
 
-// Shared card look: white, radius 10, soft shadow, 14 px padding.
-export default function Card({ title, subtitle, right, className = '', children, style, id }) {
+// Shared card: bg-1 surface, radius 12, padding 16. Title is an h2, caption names units and basis.
+export default function Card({ title, caption, right, className = '', children, style, id, as: As = 'section', hover = false, ...rest }) {
   return (
-    <section id={id} className={'bg-white ' + className} style={{ borderRadius: 10, boxShadow: 'var(--shadow-card)', padding: 14, minWidth: 0, ...style }}>
+    <As id={id} className={'card ' + (hover ? 'card-hover ' : '') + className} style={style} {...rest}>
       {(title || right) && (
-        <header className="flex items-start justify-between gap-3" style={{ marginBottom: 10 }}>
+        <header className="flex items-start justify-between gap-3" style={{ marginBottom: 12 }}>
           <div style={{ minWidth: 0 }}>
-            {title && <h2 className="font-semibold text-t3-navy m-0" style={{ fontSize: 13, lineHeight: '18px' }}>{title}</h2>}
-            {subtitle && <p className="text-t3-grey m-0" style={{ fontSize: 11, lineHeight: '15px', marginTop: 1 }}>{subtitle}</p>}
+            {title && <h2 className="t-h2 m-0">{title}</h2>}
+            {caption && <p className="t-small text-muted m-0" style={{ marginTop: 2 }}>{caption}</p>}
           </div>
           {right}
         </header>
       )}
       {children}
-    </section>
+    </As>
   );
 }
+export { Card };

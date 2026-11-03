@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { animate } from 'framer-motion';
 
-// <CountUp value={n} format={fn} duration={500} />
+// <CountUp value={n} format={fn} duration={400} />
 // Re-animates from the previous value; jumps when the user prefers reduced motion.
-export default function CountUp({ value, format = (n) => String(Math.round(n)), duration = 500, className = '' }) {
+export default function CountUp({ value, format = (n) => String(Math.round(n)), duration = 400, className = '' }) {
   const target = Number(value) || 0;
   const [shown, setShown] = useState(target);
   const prev = useRef(target);
@@ -17,7 +17,7 @@ export default function CountUp({ value, format = (n) => String(Math.round(n)), 
       return undefined;
     }
     const controls = animate(prev.current, target, {
-      duration: duration / 1000,
+      duration: Math.min(duration, 400) / 1000,
       ease: 'easeOut',
       onUpdate: (v) => setShown(v),
       onComplete: () => { prev.current = target; setShown(target); }
@@ -26,6 +26,6 @@ export default function CountUp({ value, format = (n) => String(Math.round(n)), 
     return () => controls.stop();
   }, [target, duration]);
 
-  return <span className={className}>{format(shown)}</span>;
+  return <span className={'num ' + className}>{format(shown)}</span>;
 }
 export { CountUp };

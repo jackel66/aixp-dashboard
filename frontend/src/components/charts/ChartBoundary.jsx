@@ -25,7 +25,7 @@ export default class ChartBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div className="h-full w-full flex items-center justify-center text-xs text-t3-red px-3 text-center" role="alert">
+        <div className="h-full w-full flex items-center justify-center text-xs text-fail px-3 text-center" role="alert">
           Chart failed: {String(this.state.error.message || this.state.error)}. See Diagnostics in the footer.
         </div>
       );

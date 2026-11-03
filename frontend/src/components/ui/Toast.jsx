@@ -19,12 +19,14 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center pointer-events-none">
+      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center pointer-events-none" role="status" aria-live="polite">
         <AnimatePresence>
           {items.map((t) => (
             <motion.div key={t.id} layout initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.18 }}
-              className={'rounded-full px-4 py-2 text-sm font-semibold shadow-lg text-white ' + (t.kind === 'error' ? 'bg-t3-red' : 'bg-t3-navy')}>
+              className="rounded-lg px-4 py-2 text-sm font-semibold border border-line bg-bg-1 text-ink flex items-center gap-2" style={{ boxShadow: 'var(--shadow-2)' }}>
+              <span aria-hidden="true" style={{ color: t.kind === 'error' ? 'var(--fail)' : 'var(--ok)' }}>{t.kind === 'error' ? '!' : 'v'}</span>
+              <span className="sr-only">{t.kind === 'error' ? 'Error: ' : 'Done: '}</span>
               {t.message}
             </motion.div>
           ))}

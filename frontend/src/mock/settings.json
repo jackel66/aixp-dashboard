@@ -1,0 +1,1 @@
+{"spend.seat_basis":"licensed","spend.default_basis":"consumption","cowork.rate":0.008,"cowork.rate_confirmed":false,"verify.stale_days":5,"verify.gap_days":2,"verify.unmatched_pct":2,"verify.delta_pct":25,"fixture.options":{"seed":20261103,"months":12,"people":400,"profile":"defective"},"datasets.keep":5}

@@ -8,6 +8,7 @@ const LiveContext = createContext({ subscribe: () => () => {}, connected: false,
 // serves on every event-stream connect. A mismatch means a new build was deployed (or a CDN
 // handed out a stale shell), so reload once with a fresh query string that no cache has seen.
 // sessionStorage keeps a loop impossible: one reload per server build id per tab.
+const MOCK = import.meta.env.VITE_MOCK === '1';
 const OWN_BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : null;
 function checkBuild(serverId) {
   if (!serverId || !OWN_BUILD || serverId === OWN_BUILD) return;
@@ -26,6 +27,7 @@ export function LiveProvider({ children }) {
   const [lastEvent, setLastEvent] = useState(null);
 
   useEffect(() => {
+    if (MOCK) return undefined;
     let es;
     let retry = 1000;
     let closed = false;

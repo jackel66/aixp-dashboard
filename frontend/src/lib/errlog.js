@@ -14,8 +14,8 @@ function push(kind, message, stack, extra) {
 }
 
 export function installErrorLog() {
-  if (typeof window === 'undefined' || window.__cgErrLog) return;
-  window.__cgErrLog = true;
+  if (typeof window === 'undefined' || window.__aixpErrLog) return;
+  window.__aixpErrLog = true;
   window.addEventListener('error', (ev) => {
     const err = ev.error;
     push('error', ev.message || (err && err.message), err && err.stack, { file: ev.filename, line: ev.lineno, col: ev.colno });

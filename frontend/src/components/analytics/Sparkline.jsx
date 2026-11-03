@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
+import '../charts/chartSetup.js';
 import ChartBoundary from '../charts/ChartBoundary.jsx';
-import { BRAND } from '../charts/chartSetup.js';
 import { useChartNudge, sig } from '../charts/useChartNudge.js';
+import { useThemeColors, hexToRgba } from '../../lib/color.js';
 
 const OPTIONS = {
   responsive: true,
@@ -10,24 +11,29 @@ const OPTIONS = {
   layout: { padding: { top: 4, bottom: 2, left: 2, right: 2 } },
   scales: { x: { display: false }, y: { display: false } },
   plugins: { legend: { display: false }, tooltip: { enabled: false } },
-  events: []
+  events: [],
+  animation: false
 };
 
-// 40 px line with a light fill, no axes. values: array of numbers, oldest first.
-export default function Sparkline({ values, ready = true }) {
+// Line with a light fill, no axes. values: numbers, oldest first. color: a CSS colour value
+// (hex) or a platform id; platform ids resolve through the theme.
+export default function Sparkline({ values, color, platform, ready = true, height = 40, className = 'an-tile-spark' }) {
+  const colors = useThemeColors();
+  const col = color || (platform && colors.platform[platform]) || colors.accent;
   const labels = useMemo(() => values.map((_, i) => String(i)), [values]);
   const data = useMemo(() => ({
     labels,
     datasets: [{
-      data: values, borderColor: BRAND.sky, backgroundColor: 'rgba(36,177,230,0.16)', fill: true,
+      data: values, borderColor: col, backgroundColor: hexToRgba(col, 0.16), fill: true,
       borderWidth: 1.5, tension: 0.3, pointRadius: 0, pointHoverRadius: 0
     }]
-  }), [labels, values]);
+  }), [labels, values, col]);
   const ref = useChartNudge();
-  if (!ready || values.length < 2) return null;
+  if (!ready || !values || values.length < 2) return null;
   return (
-    <div className="an-tile-spark" aria-hidden="true">
-      <ChartBoundary><Line key={sig(labels, 1)} ref={ref} data={data} options={OPTIONS} /></ChartBoundary>
+    <div className={className} style={{ height }} aria-hidden="true">
+      <ChartBoundary name="sparkline"><Line key={sig(labels, 1)} ref={ref} data={data} options={OPTIONS} /></ChartBoundary>
     </div>
   );
 }
+export { Sparkline };
