@@ -159,7 +159,7 @@ function PlatformContent({ p, basis }) {
               <div><dt className="t-small text-muted">Latest data</dt><dd className="m-0 num">{dateLong(p.as_of)}</dd></div>
               <div><dt className="t-small text-muted">Lag</dt><dd className="m-0">{p.stale ? <StatusChip status="warn">{lag(p.lag_days, true)}</StatusChip> : lag(p.lag_days, false)}</dd></div>
               <div><dt className="t-small text-muted">Coverage</dt><dd className="m-0 num">{dateShort(p.coverage.from)} to {dateShort(p.coverage.to)}, {p.coverage.days} days</dd></div>
-              <div><dt className="t-small text-muted">Gaps</dt><dd className="m-0">{p.coverage.gaps.length ? p.coverage.gaps.map((g) => dateShort(g.from) + ' to ' + dateShort(g.to)).join(', ') : 'None'}</dd></div>
+              <div><dt className="t-small text-muted">Gaps</dt><dd className="m-0">{p.coverage.monthly ? 'Not scanned: monthly snapshots, not daily rows' : p.coverage.gaps.length ? p.coverage.gaps.map((g) => dateShort(g.from) + ' to ' + dateShort(g.to)).join(', ') : 'None'}</dd></div>
             </dl>
           </Card>
           <Card title="Checks" caption="Latest verification results for this platform.">

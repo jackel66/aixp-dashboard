@@ -37,6 +37,7 @@ const ROUTES = [
 function shapeOf(v, prefix, out) {
   if (Array.isArray(v)) {
     if (v.length) shapeOf(v[0], prefix + '[]', out);
+    else out.add(prefix + '[]*'); // empty array: element keys cannot be checked
     return out;
   }
   if (v && typeof v === 'object') {
@@ -50,7 +51,12 @@ function shapeOf(v, prefix, out) {
 }
 
 // Keys inside maps keyed by data (platform ids, metric names) vary; compare those loosely.
-const LOOSE = /\.(cells|platforms|metrics|counts|defects)\.[^.]+/;
+const LOOSE = /(^|\.)(cells|platforms|metrics|counts|defects)\.[^.]+/;
+
+function missingKeys(want, have) {
+  const emptyArrays = [...have].filter((k) => k.endsWith('[]*')).map((k) => k.slice(0, -1));
+  return [...want].filter((k) => !have.has(k) && !LOOSE.test(k) && !emptyArrays.some((p) => k.startsWith(p)));
+}
 
 async function get(url) {
   const t0 = process.hrtime.bigint();
@@ -94,7 +100,7 @@ async function main() {
     if (mock) {
       const want = shapeOf(mock, '', new Set());
       const have = shapeOf(r.json, '', new Set());
-      missing = [...want].filter((k) => !have.has(k) && !LOOSE.test(k));
+      missing = missingKeys(want, have);
     }
     const tag = missing.length || slow ? 'WARN' : 'ok  ';
     if (missing.length || slow) failed++;

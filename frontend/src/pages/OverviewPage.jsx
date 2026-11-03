@@ -58,8 +58,8 @@ export default function OverviewPage() {
               <motion.section variants={container} initial="hidden" animate="show" aria-label="Key figures"
                 className="grid-16" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
                 <motion.div variants={item}><StatTile label={BASIS_LABEL[basis] + ' spend'} value={sm.totals.spend[basis].usd} format={money} sub="US dollars, selected range" /></motion.div>
-                <motion.div variants={item}><StatTile label="Consumption spend" value={sm.totals.spend.consumption.usd} format={money} sub="US dollars, usage cost" /></motion.div>
-                <motion.div variants={item}><StatTile label="Seat spend" value={sm.totals.spend.seat.usd} format={money} sub="US dollars, licensed seats" /></motion.div>
+                {basis !== 'consumption' && <motion.div variants={item}><StatTile label="Consumption spend" value={sm.totals.spend.consumption.usd} format={money} sub="US dollars, usage cost" /></motion.div>}
+                {basis !== 'seat' && <motion.div variants={item}><StatTile label="Seat spend" value={sm.totals.spend.seat.usd} format={money} sub="US dollars, licensed seats" /></motion.div>}
                 <motion.div variants={item}><StatTile label="Tokens" value={tokens} format={(n) => compactCount(n)} unit="tokens" sub="Anthropic and OpenAI" /></motion.div>
                 <motion.div variants={item}><StatTile label="Credits" value={credits} format={(n) => compactCount(n)} unit="credits" sub="GitHub Copilot and Cowork" /></motion.div>
                 <motion.div variants={item}><StatTile label="Active users" value={sm.totals.active_users} format={(n) => count(n)} sub="Distinct people, all platforms" /></motion.div>

@@ -335,9 +335,12 @@ function platformReport(id, query) {
   if (dates) {
     const cFrom = ctx.from > dates.min ? ctx.from : dates.min;
     const cTo = ctx.to < dates.max ? ctx.to : dates.max;
+    // Cowork rows are monthly snapshots normalized onto one date per person and month, so a
+    // day-by-day gap scan would report artefacts; the verification check reads stage dates.
+    const monthly = p.unit === 'credits' && id === 'cowork';
     coverage = cFrom > cTo
-      ? { from: cFrom, to: cFrom, days: 0, gaps: [] }
-      : { from: cFrom, to: cTo, days: time.diffDays(cFrom, cTo) + 1, gaps: gapsFor(ctx, id, cFrom, cTo) };
+      ? { from: cFrom, to: cFrom, days: 0, gaps: [], monthly }
+      : { from: cFrom, to: cTo, days: time.diffDays(cFrom, cTo) + 1, gaps: monthly ? [] : gapsFor(ctx, id, cFrom, cTo), monthly };
   }
 
   const c = M.consumptionByPlatform(ctx, ctx.from, ctx.to, [id])[id];
