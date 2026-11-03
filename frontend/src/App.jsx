@@ -10,6 +10,11 @@ import LandingPage from './pages/LandingPage.jsx';
 import OverviewPage from './pages/OverviewPage.jsx';
 import PlatformPage from './pages/PlatformPage.jsx';
 import DiagnosticsPage from './pages/DiagnosticsPage.jsx';
+import OrganizationPage from './pages/OrganizationPage.jsx';
+import ModelsPage from './pages/ModelsPage.jsx';
+import UsersPage from './pages/UsersPage.jsx';
+import DataQualityPage from './pages/DataQualityPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 
 function Placeholder({ title }) {
   return (
@@ -34,11 +39,11 @@ export default function App() {
                 <Route path="/platforms/:id" element={<PlatformPage />} />
                 <Route path="/diagnostics" element={<DiagnosticsPage />} />
                 {/* // D routes - Builder D swaps these placeholders for the real pages, nothing else in this file */}
-                <Route path="/organization" element={<Placeholder title="Organization" />} />
-                <Route path="/models" element={<Placeholder title="Models" />} />
-                <Route path="/users" element={<Placeholder title="Users" />} />
-                <Route path="/data-quality" element={<Placeholder title="Data quality" />} />
-                <Route path="/settings/:section?" element={<Placeholder title="Settings" />} />
+                <Route path="/organization" element={<OrganizationPage />} />
+                <Route path="/models" element={<ModelsPage />} />
+                <Route path="/users" element={<UsersPage />} />
+                <Route path="/data-quality" element={<DataQualityPage />} />
+                <Route path="/settings/:section?" element={<SettingsPage />} />
                 {/* // end D routes */}
                 <Route path="*" element={<div className="page"><EmptyState title="Page not found" body="That address does not match a page." /></div>} />
               </Route>

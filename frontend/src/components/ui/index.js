@@ -12,3 +12,4 @@ export { default as SegmentedControl } from './SegmentedControl.jsx';
 export { default as DateRangePicker } from './DateRangePicker.jsx';
 export { default as useFocusTrap } from './useFocusTrap.js';
 export { ToastProvider, useToast } from './Toast.jsx';
+export { default as DataTable } from './DataTable.jsx';
