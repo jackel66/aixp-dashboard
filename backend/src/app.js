@@ -9,7 +9,17 @@ const pkg = require('../package.json');
 
 // Builder B mounts the routes in mountRoutes(). Everything else here is the shared shell.
 function mountRoutes(api) {
-  // api.use('/summary', require('./routes/summary'));
+  api.use('/summary', require('./routes/summary'));
+  api.use('/trend', require('./routes/trend'));
+  api.use('/platforms', require('./routes/platforms'));
+  api.use('/organization', require('./routes/organization'));
+  api.use('/models', require('./routes/models'));
+  api.use('/users', require('./routes/users'));
+  api.use('/verification', require('./routes/verification'));
+  api.use('/datasets', require('./routes/datasets'));
+  api.use('/fixtures', require('./routes/fixtures'));
+  api.use('/settings', require('./routes/settings'));
+  api.use('/export', require('./routes/export'));
 }
 
 function createApp() {
