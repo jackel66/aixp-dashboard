@@ -8,18 +8,21 @@ function mockName(path, params) {
   if (p === 'trend') return 'trend-' + (params.get('grain') || 'week');
   const m = p.match(/^platforms\/([^/]+)$/);
   if (m) return 'platform-' + m[1];
+  if (/^access\/roles\/\d+\/assignments$/.test(p)) return 'access-roles-assignments';
   return p.replace(/\//g, '-');
 }
 
-async function mockRequest(method, path) {
-  const [bare, qs] = path.split('?');
-  if (bare === '/auth/session') return { required: false, authenticated: true };
-  if (bare === '/health') return { ok: true, buildId: 'mock', mock: true };
-  if (method !== 'GET') return { ok: true, mock: true };
-  const name = mockName(bare, new URLSearchParams(qs || ''));
+// Mock sign-in state lives in localStorage so the login page can be exercised without a backend:
+// logout sets the flag, a login with any password except "bad" clears it.
+const MOCK_OUT = 'aixp.mock.signedout';
+function mockOut(v) {
+  try { if (v === undefined) return localStorage.getItem(MOCK_OUT) === '1'; if (v) localStorage.setItem(MOCK_OUT, '1'); else localStorage.removeItem(MOCK_OUT); } catch { /* storage blocked */ }
+  return false;
+}
+async function mockFile(name) {
   const loader = mockFiles['../mock/' + name + '.json'];
   if (!loader) {
-    const err = new Error('No mock for ' + path);
+    const err = new Error('No mock for ' + name);
     err.status = 404;
     throw err;
   }
@@ -27,9 +30,53 @@ async function mockRequest(method, path) {
   return JSON.parse(JSON.stringify(mod.default));
 }
 
+async function mockRequest(method, path, body) {
+  const [bare, qs] = path.split('?');
+  if (bare === '/auth/session') {
+    const s = await mockFile('auth-session');
+    return mockOut() ? { authenticated: false, ad: s.ad } : s;
+  }
+  if (bare === '/auth/login') {
+    if (body && body.password === 'bad') {
+      const err = new Error('Wrong username or password');
+      err.status = 401;
+      err.body = { error: err.message, code: 'bad_credentials' };
+      throw err;
+    }
+    mockOut(false);
+    return mockFile('auth-session');
+  }
+  if (bare === '/auth/logout') { mockOut(true); return { ok: true }; }
+  if (bare === '/health') return { ok: true, buildId: 'mock', mock: true };
+  if (method === 'POST' && bare === '/access/directory/test') return mockFile('access-directory-test');
+  if (method === 'POST' && bare === '/access/directory/sync') return { users: 2, updated: 2, deactivated: 0, errors: [] };
+  if (method !== 'GET') return { ok: true, mock: true };
+  const params = new URLSearchParams(qs || '');
+  const name = mockName(bare, params);
+  if (name === 'access-directory-search') {
+    const all = await mockFile(name);
+    const q = (params.get('q') || '').toLowerCase();
+    const rows = [];
+    (params.get('type') || 'user').split(',').forEach((t) => {
+      (all[t] || []).forEach((r) => { if (!q || JSON.stringify(r).toLowerCase().includes(q)) rows.push(r); });
+    });
+    return { rows };
+  }
+  return mockFile(name);
+}
+
+// Subscribers called when any non-auth call answers 401 (the session ended). The auth context
+// subscribes and refreshes, so the login page shows.
+const unauthorizedHandlers = new Set();
+export function onUnauthorized(fn) {
+  unauthorizedHandlers.add(fn);
+  return () => unauthorizedHandlers.delete(fn);
+}
+
 async function request(method, path, body, opts = {}) {
-  if (MOCK) return mockRequest(method, path);
+  if (MOCK) return mockRequest(method, path, body);
   const headers = {};
+  if (method !== 'GET') headers['x-aixp-csrf'] = '1';
   let payload;
   if (body instanceof FormData) {
     payload = body;
@@ -42,6 +89,7 @@ async function request(method, path, body, opts = {}) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
   if (!res.ok) {
+    if (res.status === 401 && !path.startsWith('/auth/')) unauthorizedHandlers.forEach((fn) => { try { fn(); } catch (e) { console.error(e); } });
     const err = new Error((data && data.error) || `${method} ${path} failed (${res.status})`);
     err.status = res.status;
     err.body = data;

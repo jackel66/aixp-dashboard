@@ -25,11 +25,16 @@ function firstBootSeed() {
 
 async function main() {
   open();
+  const authService = require('./services/authService');
+  authService.seedAdmin();
+  authService.prune();
+  setInterval(() => { try { authService.prune(); } catch (e) { /* database closing */ } }, 24 * 3600 * 1000).unref();
   firstBootSeed();
   const port = parseInt(process.env.PORT, 10) || 3090;
   const app = createApp();
   const server = app.listen(port, () => console.log(`[server] listening on http://localhost:${port}`));
   require('./services/powerbiSchedule').start();
+  require('./services/directorySync').start();
   server.on('error', (e) => { console.error('[server] failed to start:', e.message); process.exit(1); });
 }
 

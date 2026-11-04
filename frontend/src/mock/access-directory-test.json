@@ -1,0 +1,9 @@
+{"ok":false,"duration_ms":1840,"steps":[
+{"key":"dns","ok":true,"label":"Find domain controllers","detail":"2 servers from _ldap._tcp.dc._msdcs.corp.example.com"},
+{"key":"connect","ok":true,"label":"Connect","detail":"ldaps://dc01.corp.example.com:636, certificate verified"},
+{"key":"bind","ok":true,"label":"Sign in","detail":"Bound as svc-aixp@corp.example.com"},
+{"key":"base_dn","ok":true,"label":"Base DN","detail":"DC=corp,DC=example,DC=com confirmed by the directory"},
+{"key":"users","ok":true,"label":"Users","detail":"1,284 person objects"},
+{"key":"groups","ok":true,"label":"Groups","detail":"212 groups"},
+{"key":"ous","ok":false,"label":"Organizational units","detail":"Search was refused: insufficient access rights on the base DN."}
+]}

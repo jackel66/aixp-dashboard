@@ -54,6 +54,20 @@ const DEFAULTS = {
   'powerbi.schedule': '',
   'powerbi.last_pull_at': null,
   'powerbi.last_pull': null,
+  // Active Directory (CONTRACT section 14.5). ad.bind_password is stored encrypted.
+  'ad.enabled': false,
+  'ad.domain': '',
+  'ad.bind_user': '',
+  'ad.bind_password': '',
+  'ad.servers': '',
+  'ad.base_dn': '',
+  'ad.tls_mode': 'auto',
+  'ad.tls_verify': true,
+  'ad.ca_cert': '',
+  'ad.sync_minutes': 60,
+  'ad.deactivate_removed': true,
+  'ad.discovered': null,
+  'ad.status': null,
 };
 
 module.exports = { DEFAULTS, LOBCG_SEED };

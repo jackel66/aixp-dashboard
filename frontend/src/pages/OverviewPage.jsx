@@ -14,6 +14,7 @@ import Chip from '../components/ui/Chip.jsx';
 import AsOfChip from '../components/AsOfChip.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
 import { useQuery } from '../lib/query.js';
+import { useAuth } from '../lib/auth.jsx';
 import { useUrlFilters, apiParams } from '../lib/filters.js';
 import { container, item } from '../lib/motion.js';
 import { BASIS_LABEL, PLATFORM_IDS, platformName } from '../lib/platforms.js';
@@ -29,12 +30,14 @@ function sumUnit(platforms, unit) {
 export default function OverviewPage() {
   const { values, set } = useUrlFilters(DEFAULTS);
   const { openUser } = useDrawers();
+  const { can } = useAuth();
+  const people = can('people.view');
   const basis = values.basis;
   const range = apiParams(values, ['from', 'to']);
   const summary = useQuery('/summary', { ...range, basis });
   const trend = useQuery('/trend', { ...range, grain: values.bucket, basis });
   const org = useQuery('/organization', { ...range, dim: 'lob_cg', measure: 'spend', basis });
-  const users = useQuery('/users', { ...range, sort: 'usd', dir: 'desc', pageSize: 10 });
+  const users = useQuery(people ? '/users' : null, { ...range, sort: 'usd', dir: 'desc', pageSize: 10 });
 
   const s = summary.data;
   const shownRange = s ? { from: values.from || s.range.from, to: values.to || s.range.to } : null;
@@ -89,7 +92,7 @@ export default function OverviewPage() {
                 </Card>
               </div>
 
-              <Card title="Top 10 users by spend" caption={'US dollars of usage cost. Open a name for detail.'}>
+              {people && <Card title="Top 10 users by spend" caption={'US dollars of usage cost. Open a name for detail.'}>
                 <DataState q={users} skeleton={<SkeletonCard height={260} />}>
                   {(u) => (u.rows.length ? (
                     <div style={{ overflowX: 'auto' }}>
@@ -110,7 +113,7 @@ export default function OverviewPage() {
                     </div>
                   ) : <EmptyState title="No users in this range" body="Widen the date range to see activity." />)}
                 </DataState>
-              </Card>
+              </Card>}
             </div>
           );
         }}

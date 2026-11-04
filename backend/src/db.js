@@ -283,6 +283,76 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  display_name TEXT,
+  email TEXT,
+  source TEXT NOT NULL DEFAULT 'local',
+  password_hash TEXT,
+  default_password INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  ad_dn TEXT,
+  ad_sid TEXT,
+  ad_upn TEXT,
+  ad_guid TEXT,
+  ad_groups_json TEXT,
+  ad_ou TEXT,
+  ad_attrs_json TEXT,
+  person_key TEXT,
+  created_at TEXT,
+  updated_at TEXT,
+  last_login_at TEXT,
+  failed_logins INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT
+);
+
+CREATE TABLE IF NOT EXISTS roles (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  system INTEGER NOT NULL DEFAULT 0,
+  permissions_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS role_assignments (
+  id INTEGER PRIMARY KEY,
+  role_id INTEGER NOT NULL,
+  subject_type TEXT NOT NULL,
+  user_id INTEGER NOT NULL DEFAULT 0,
+  ad_dn TEXT NOT NULL DEFAULT '',
+  ad_sid TEXT,
+  ad_name TEXT,
+  created_at TEXT,
+  UNIQUE (role_id, subject_type, user_id, ad_dn)
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at TEXT,
+  last_seen_at TEXT,
+  expires_at TEXT,
+  ip TEXT,
+  user_agent TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_sessions_user ON sessions(user_id);
+
+CREATE TABLE IF NOT EXISTS auth_events (
+  id INTEGER PRIMARY KEY,
+  at TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  username TEXT,
+  user_id INTEGER,
+  source TEXT,
+  ip TEXT,
+  detail TEXT,
+  actor_user_id INTEGER
+);
+CREATE INDEX IF NOT EXISTS ix_auth_events_at ON auth_events(at);
 `;
 
 let db = null;

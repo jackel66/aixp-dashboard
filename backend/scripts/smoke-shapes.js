@@ -32,7 +32,28 @@ const ROUTES = [
   ['settings', '/api/settings'],
   ['settings-seat-rates', '/api/settings/seat-rates'],
   ['settings-lob-cg-map', '/api/settings/lob-cg-map'],
+  ['access-permissions', '/api/access/permissions'],
+  ['access-users', '/api/access/users'],
+  ['access-roles', '/api/access/roles'],
+  ['access-directory', '/api/access/directory'],
+  ['access-events', '/api/access/events'],
+  ['auth-session', '/api/auth/session'],
 ];
+
+// Every call after sign-in sends the session cookie and the csrf header.
+let COOKIE = '';
+const AUTH_USER = process.env.SMOKE_USER || 'admin';
+const AUTH_PASSWORD = process.env.SMOKE_PASSWORD || 'M0nkside';
+
+async function signIn() {
+  const res = await fetch(BASE + '/api/auth/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-aixp-csrf': '1' },
+    body: JSON.stringify({ username: AUTH_USER, password: AUTH_PASSWORD }),
+  });
+  if (res.status !== 200) throw new Error(`sign-in as ${AUTH_USER} failed: HTTP ${res.status} ${await res.text()}`);
+  COOKIE = res.headers.get('set-cookie').split(';')[0];
+}
 
 function shapeOf(v, prefix, out) {
   if (Array.isArray(v)) {
@@ -60,7 +81,7 @@ function missingKeys(want, have) {
 
 async function get(url) {
   const t0 = process.hrtime.bigint();
-  const res = await fetch(BASE + url);
+  const res = await fetch(BASE + url, { headers: { cookie: COOKIE, 'x-aixp-csrf': '1' } });
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
   const text = await res.text();
   let json = null;
@@ -69,6 +90,7 @@ async function get(url) {
 }
 
 async function main() {
+  await signIn();
   let failed = 0;
   const resolved = {};
   for (const [mockName, fixedRoute] of ROUTES) {
@@ -112,7 +134,7 @@ async function main() {
   if (nope.status !== 404 || !nope.json || !nope.json.error) { console.log(`FAIL /api/nope: expected 404 JSON, got ${nope.status}`); failed++; }
   else console.log('ok   /api/nope 404 JSON');
   // CSV export carries the caveat first.
-  const csv = await fetch(BASE + '/api/export/summary.csv').then((r) => r.text()).catch(() => '');
+  const csv = await fetch(BASE + '/api/export/summary.csv', { headers: { cookie: COOKIE } }).then((r) => r.text()).catch(() => '');
   if (!csv.startsWith('# This dashboard provides a directional view')) { console.log('FAIL /api/export/summary.csv: caveat line missing'); failed++; }
   else console.log('ok   /api/export/summary.csv caveat first line');
   console.log(failed ? `\n${failed} problem(s)` : '\nall routes match the mock shapes');

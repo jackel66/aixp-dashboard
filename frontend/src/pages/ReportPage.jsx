@@ -13,6 +13,7 @@ import ReportChart from '../components/reports/ReportChart.jsx';
 import { renderCell, isNumericType } from '../components/reports/reportCells.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
 import { useQuery, buildUrl } from '../lib/query.js';
+import { useAuth } from '../lib/auth.jsx';
 import { useUrlFilters, apiParams } from '../lib/filters.js';
 import { PLATFORMS } from '../lib/platforms.js';
 import { dateLong } from '../lib/format.js';
@@ -24,7 +25,9 @@ const LIMITS = ['10', '25', '50', '100', '500'];
 export default function ReportPage() {
   const { id } = useParams();
   const { values, set } = useUrlFilters(DEFAULTS);
-  const { openUser } = useDrawers();
+  const { openUser: openUserDrawer } = useDrawers();
+  const { can } = useAuth();
+  const openUser = can('people.view') ? openUserDrawer : null;
   const cat = useQuery('/reports', {});
   const meta = cat.data ? cat.data.reports.find((r) => r.id === id) : null;
   const allowed = meta ? meta.params : ['range', 'platform', 'basis', 'dim', 'limit'];

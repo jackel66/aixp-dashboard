@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CAVEAT } from '../lib/platforms.js';
+import { useAuth } from '../lib/auth.jsx';
 
 export default function Footer() {
+  const { can } = useAuth();
   return (
     <footer className="border-t border-line bg-bg-1 mt-auto">
       <div style={{ paddingTop: 20, paddingBottom: 20 }} className="page flex flex-col gap-3">
@@ -11,7 +13,7 @@ export default function Footer() {
           <nav aria-label="Footer" className="flex items-center gap-4 t-small">
             <Link to="/overview" className="text-muted">Overview</Link>
             <Link to="/data-quality" className="text-muted">Data quality</Link>
-            <Link to="/settings" className="text-muted">Settings</Link>
+            {(can('settings.manage') || can('data.manage') || can('access.manage')) && <Link to="/settings" className="text-muted">Settings</Link>}
             <Link to="/diagnostics" className="text-muted">Diagnostics</Link>
           </nav>
         </div>

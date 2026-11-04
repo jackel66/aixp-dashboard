@@ -12,6 +12,7 @@ test.before(async () => {
   // default fixture size on purpose: the timing loop needs realistic volume
   seedFixture({ previous: true, profile: 'defective', endDate: '2026-10-30', label: 'reports catalogue' });
   app = await startApp();
+  app.call = (await app.admin()).call; // signed in as admin / M0nkside
 });
 test.after(async () => {
   if (app) await app.close();

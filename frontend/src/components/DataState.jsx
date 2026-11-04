@@ -7,7 +7,13 @@ import { SkeletonCard } from './ui/Skeleton.jsx';
 //   loading: skeleton after 150 ms (children render nothing until data exists)
 //   error without data: EmptyState with Retry
 //   error with data: inline warning above the content, last good data kept
+export function Forbidden({ err }) {
+  const req = err && err.body && err.body.required;
+  return <EmptyState title="You do not have access to this page" body={req ? 'This view needs the permission ' + req + '. Ask an administrator for a role that includes it.' : 'Your role does not include it. Ask an administrator.'} />;
+}
+
 export default function DataState({ q, skeleton, children }) {
+  if (q.error && q.error.status === 403 && q.data === undefined) return <Forbidden err={q.error} />;
   if (q.error && q.data === undefined) {
     return <EmptyState tone="error" title="Could not load this view" body={q.error.message || 'The request failed.'} action={<Button variant="secondary" onClick={q.reload}>Retry</Button>} />;
   }

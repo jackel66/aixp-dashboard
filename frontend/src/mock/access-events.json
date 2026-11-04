@@ -1,0 +1,9 @@
+{"rows":[
+{"id":9,"at":"2026-11-04T15:02:11Z","kind":"login_ok","username":"admin","user_id":1,"source":"local","ip":"10.0.0.5","detail":"","actor_user_id":null},
+{"id":8,"at":"2026-11-04T14:50:00Z","kind":"ad_test","username":"admin","user_id":1,"source":"local","ip":"10.0.0.5","detail":"Directory test: failed at step ous","actor_user_id":1},
+{"id":7,"at":"2026-11-04T14:20:50Z","kind":"login_locked","username":"viewer1","user_id":4,"source":"local","ip":"10.0.0.9","detail":"Locked for 15 minutes","actor_user_id":null},
+{"id":6,"at":"2026-11-04T14:20:31Z","kind":"login_fail","username":"viewer1","user_id":4,"source":"local","ip":"10.0.0.9","detail":"Wrong password","actor_user_id":null},
+{"id":5,"at":"2026-11-03T09:15:40Z","kind":"login_ok","username":"mreyes","user_id":2,"source":"ad","ip":"10.0.0.21","detail":"","actor_user_id":null},
+{"id":4,"at":"2026-11-02T10:06:00Z","kind":"assignment_added","username":"","user_id":null,"source":"","ip":"10.0.0.5","detail":"Executive: OU Executives","actor_user_id":1},
+{"id":3,"at":"2026-11-02T10:00:00Z","kind":"user_created","username":"viewer1","user_id":4,"source":"local","ip":"10.0.0.5","detail":"","actor_user_id":1}
+]}

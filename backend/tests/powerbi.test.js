@@ -149,6 +149,7 @@ test.before(async () => {
   client.setBackoff(5);
   seedFixture({ months: 3, people: 200, profile: 'clean', endDate: '2026-10-30', label: 'baseline fixture' });
   app = await startApp();
+  app.call = (await app.admin()).call; // signed in as admin / M0nkside
   events.addClient({ on() {} }, { writeHead() {}, flushHeaders() {}, write(s) { sseLines.push(...String(s).split('\n')); } });
 });
 test.after(async () => {

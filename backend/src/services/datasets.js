@@ -165,6 +165,7 @@ function activate(id, opts) {
     db.prepare("UPDATE datasets SET status = 'active', promoted_at = ?, archived_at = NULL WHERE id = ?").run(now, id);
   });
   tx();
+  require('./authService').refreshPersonKeys(db, id);
   broadcast('dataset.promoted', { id });
   return get(id);
 }

@@ -17,6 +17,7 @@ import DataQualityPage from './pages/DataQualityPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import ReportPage from './pages/ReportPage.jsx';
+import { useAuth } from './lib/auth.jsx';
 
 function Placeholder({ title }) {
   return (
@@ -27,6 +28,14 @@ function Placeholder({ title }) {
   );
 }
 
+// The landing route: dashboards for dashboard.view, else the first page the user can see.
+function Home() {
+  const { can } = useAuth();
+  if (can('dashboard.view')) return <LandingPage />;
+  if (can('settings.manage') || can('data.manage') || can('access.manage')) return <Navigate to="/settings" replace />;
+  return <div className="page"><EmptyState title="You do not have access to this page" body="Your role has no pages assigned. Ask an administrator." /></div>;
+}
+
 export default function App() {
   return (
     <AuthGate>
@@ -35,7 +44,7 @@ export default function App() {
           <DrawerHost>
             <Routes>
               <Route element={<Layout />}>
-                <Route path="/" element={<LandingPage />} />
+                <Route path="/" element={<Home />} />
                 <Route path="/overview" element={<OverviewPage />} />
                 <Route path="/platforms" element={<Navigate to="/platforms/anthropic" replace />} />
                 <Route path="/platforms/:id" element={<PlatformPage />} />

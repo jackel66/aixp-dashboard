@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { PLATFORMS } from '../lib/platforms.js';
+import { useAuth } from '../lib/auth.jsx';
 
 // Left navigation column. Sections and the four platform reports live here; the global
 // items (Settings, theme, live state) stay in the top header.
@@ -9,7 +10,7 @@ const SECTIONS = [
   { to: '/overview', label: 'Overview' },
   { to: '/organization', label: 'Organization' },
   { to: '/models', label: 'Models' },
-  { to: '/users', label: 'Users' },
+  { to: '/users', label: 'Users', need: 'people.view' },
   { to: '/data-quality', label: 'Data quality' },
   { to: '/reports', label: 'Reports' }
 ];
@@ -29,11 +30,14 @@ function Icon({ name }) {
 const ICONS = { '/': 'home', '/overview': 'overview', '/organization': 'org', '/models': 'models', '/users': 'users', '/data-quality': 'quality', '/reports': 'reports' };
 
 export default function Sidebar() {
+  const { can } = useAuth();
+  const dash = can('dashboard.view');
+  const sections = SECTIONS.filter((s) => dash && can(s.need || 'dashboard.view'));
   return (
     <aside className="sidebar" aria-label="Sections">
       <nav className="sidebar-inner">
         <ul className="list-none m-0 p-0 flex flex-col gap-0.5">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <li key={s.to}>
               <NavLink to={s.to} end={s.end} className="side-link">
                 <Icon name={ICONS[s.to]} />
@@ -42,9 +46,9 @@ export default function Sidebar() {
             </li>
           ))}
         </ul>
-        <div className="t-h3 side-group">Platforms</div>
+        {dash && <div className="t-h3 side-group">Platforms</div>}
         <ul className="list-none m-0 p-0 flex flex-col gap-0.5">
-          {PLATFORMS.map((p) => (
+          {dash && PLATFORMS.map((p) => (
             <li key={p.id}>
               <NavLink to={'/platforms/' + p.id} className="side-link">
                 <span aria-hidden="true" className="side-dot" style={{ background: 'var(--p-' + p.id + ')' }} />

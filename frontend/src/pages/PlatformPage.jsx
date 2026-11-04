@@ -16,6 +16,7 @@ import Chip from '../components/ui/Chip.jsx';
 import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
 import { useQuery } from '../lib/query.js';
+import { useAuth } from '../lib/auth.jsx';
 import { useUrlFilters, apiParams } from '../lib/filters.js';
 import { PLATFORMS, BY_ID, BASIS_LABEL } from '../lib/platforms.js';
 import { money, moneyFull, count, compactCount, units, lag, dateLong, dateShort, pctChange, pct } from '../lib/format.js';
@@ -66,6 +67,8 @@ function PlatformBody({ id, meta, header, values, set }) {
 
 function PlatformContent({ p, basis }) {
   const { openUser, openModel, openCheck } = useDrawers();
+  const { can } = useAuth();
+  const people = can('people.view');
   const unit = p.platform.unit;
   const cur = p.spend[basis].usd;
   const prev = p.prior && p.prior.spend ? p.prior.spend[basis].usd : null;
@@ -135,7 +138,7 @@ function PlatformContent({ p, basis }) {
       </Card>
 
       <div className="grid-16" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))' }}>
-        <Card title="Top users" caption={'Top 20 by spend, US dollars and ' + unit + '.'}>
+        {people && <Card title="Top users" caption={'Top 20 by spend, US dollars and ' + unit + '.'}>
           <div style={{ overflow: 'auto', maxHeight: 420 }}>
             <table className="tbl compact">
               <thead><tr><th>User</th><th>LOB-CG</th><th className="r">Spend (USD)</th><th className="r">Consumption</th></tr></thead>
@@ -151,7 +154,7 @@ function PlatformContent({ p, basis }) {
               </tbody>
             </table>
           </div>
-        </Card>
+        </Card>}
 
         <div className="flex flex-col gap-4">
           <Card title="Freshness" caption="How current this platform's data is on its own, not by the overall maximum date.">

@@ -12,6 +12,7 @@ let app;
 test.before(async () => {
   seedFixture({ people: 80, months: 3, endDate: '2026-10-30', seed: 3, profile: 'clean' });
   app = await startApp();
+  app.call = (await app.admin()).call; // signed in as admin / M0nkside
 });
 test.after(async () => {
   if (app) await app.close();

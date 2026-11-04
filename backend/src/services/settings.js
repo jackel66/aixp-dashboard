@@ -7,7 +7,7 @@ const { broadcast } = require('./events');
 const secrets = require('./secrets');
 
 // Keys stored encrypted. GET shows them as {set: bool}; server code uses getSecret().
-const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token']);
+const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token', 'ad.bind_password']);
 
 const intRange = (name, lo, hi) => (v) => {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
@@ -40,6 +40,25 @@ const PBI_TABLE_KEYS = ['usage', 'people', 'seat_rate', 'region_map', 'lob_cg_ma
 const PBI_TABLE_NAME = /^[A-Za-z0-9 _.-]+$/;
 
 const VALIDATORS = {
+  'ad.enabled': bool('ad.enabled'),
+  'ad.domain': (v) => text('ad.domain', 253, /^[A-Za-z0-9._-]+$/)(v).toLowerCase(),
+  'ad.bind_user': text('ad.bind_user', 256),
+  'ad.servers': (v) => {
+    const raw = Array.isArray(v) ? v.join(' ') : v;
+    const t = text('ad.servers', 2000)(raw);
+    return t.split(/[\s,;]+/).filter(Boolean).join(', ');
+  },
+  'ad.base_dn': text('ad.base_dn', 500),
+  'ad.tls_mode': oneOf('ad.tls_mode', ['auto', 'ldaps', 'starttls']),
+  'ad.tls_verify': bool('ad.tls_verify'),
+  'ad.ca_cert': (v) => {
+    if (v === null || v === undefined) return '';
+    if (typeof v !== 'string') throw badRequest('ad.ca_cert must be text');
+    if (v.length > 20000) throw badRequest('ad.ca_cert is too long');
+    return v.trim();
+  },
+  'ad.sync_minutes': intRange('ad.sync_minutes', 5, 1440),
+  'ad.deactivate_removed': bool('ad.deactivate_removed'),
   'powerbi.enabled': bool('powerbi.enabled'),
   'powerbi.auth_mode': oneOf('powerbi.auth_mode', ['service_principal', 'token']),
   'powerbi.tenant_id': text('powerbi.tenant_id', 100, /^[A-Za-z0-9._-]+$/),
@@ -146,7 +165,8 @@ function storedAll() {
 // Everything the API may show: secrets become {set: true|false}.
 function allRaw() {
   const out = storedAll();
-  for (const k of SECRET_KEYS) out[k] = { set: typeof out[k] === 'string' && out[k] !== '' };
+  for (const k of Object.keys(out)) if (k.startsWith('ad.')) delete out[k];
+  for (const k of SECRET_KEYS) if (!k.startsWith('ad.')) out[k] = { set: typeof out[k] === 'string' && out[k] !== '' };
   return out;
 }
 
@@ -177,13 +197,19 @@ function checkValue(key, v) {
   return fn ? fn(v) : v;
 }
 
-// Apply a settings patch. Returns the full settings object and broadcasts the changed keys.
-function update(body) {
+// Keys the directory page may write. ad.discovered and ad.status are written by the service itself.
+const AD_WRITABLE = ['ad.enabled', 'ad.domain', 'ad.bind_user', 'ad.bind_password', 'ad.servers', 'ad.base_dn',
+  'ad.tls_mode', 'ad.tls_verify', 'ad.ca_cert', 'ad.sync_minutes', 'ad.deactivate_removed'];
+
+function apply(body, mode) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw badRequest('Body must be a JSON object');
   const changed = [];
   const cleaned = {};
   for (const [key, raw] of Object.entries(body)) {
     if (!/^[A-Za-z0-9_.-]{1,80}$/.test(key)) throw badRequest(`Bad settings key "${key}"`);
+    const isAd = key.startsWith('ad.');
+    if (mode === 'settings' && isAd) throw badRequest('Directory settings are saved under /api/access/directory');
+    if (mode === 'ad' && !AD_WRITABLE.includes(key)) throw badRequest(`Unknown directory setting "${key}"`);
     if (SECRET_KEYS.has(key)) {
       const p = secretPatch(key, raw);
       if (p !== undefined) cleaned[key] = p;
@@ -199,8 +225,19 @@ function update(body) {
     }
   });
   tx();
+  return changed;
+}
+
+// Apply a settings patch. Returns the full settings object and broadcasts the changed keys.
+function update(body) {
+  const changed = apply(body, 'settings');
   if (changed.length) broadcast('settings.changed', { keys: changed });
   return allRaw();
 }
 
-module.exports = { get, set, allRaw, update, getSecret, SECRET_KEYS, VALIDATORS };
+// Directory patch (ad.* keys only). Returns the keys that changed; the caller broadcasts.
+function updateAd(body) {
+  return apply(body, 'ad');
+}
+
+module.exports = { get, set, allRaw, update, updateAd, getSecret, SECRET_KEYS, VALIDATORS };
