@@ -657,3 +657,295 @@ token endpoint, datasets list, executeQueries that serves fixture rows in Power 
 shape with "Usage[Date]" keys and enforces the 100,000 cap so the per-platform split is
 exercised); test, pull end to end to an active dataset with verdict, secret encryption
 round trip and masking, 409 while running, failure path marks the dataset failed.
+
+## 14. Sign-in, local users, Active Directory and roles (addendum 2026-11-04, builders I backend and J frontend)
+
+Purpose (Doug, 2026-11-04): a real login page; local users and Active Directory users;
+custom roles assigned to AD groups, AD organizational units or AD users, or to local users
+directly; local password resets by an administrator; the first account is admin / M0nkside;
+AD is off by default and the admin only enters the domain plus one account that is allowed
+to read the directory, everything else (domain controllers, base DN, TLS) is worked out in
+the background; every failure names where it failed; an AD user is mapped to the
+organizational unit and the org attributes AD already holds for them. Styling stays as it
+is: the login page is the existing AuthGate card, the access pages are Settings sections
+built from the primitives in components/ui and components/settings/shared.jsx.
+
+The APP_PASSWORD shared-password gate is REPLACED. The env var is ignored after this round
+(hermes keeps it in the pm2 env harmlessly). Every /api route except /api/health and
+/api/auth/* needs a signed-in user; the SSE stream needs one too (the cookie rides on
+EventSource).
+
+### 14.1 Permissions (backend/src/services/permissions.js, owner I; the frontend reads them from the API)
+
+Fixed catalogue, each a key with a label and a one-line description:
+
+| key | grants |
+|---|---|
+| dashboard.view | landing, overview, platform pages, organization, models, data quality (read), reports (except the user reports), trend, summary, verification read, datasets list |
+| people.view | /api/users list and detail, the user drawer, the users_* reports and the top users tables; person-level usage |
+| export.csv | /api/export/* (a user report export also needs people.view) |
+| data.manage | datasets verify, promote, rollback; fixtures generate; Power BI test, datasets, pull |
+| settings.manage | GET and PUT /api/settings and its sub-routes (seat rates, LOB-CG map) |
+| access.manage | /api/access/* (users, roles, assignments, directory, sign-in activity) |
+
+A role is a named set of keys. System roles are seeded and cannot be deleted or have their
+keys edited (name and description are read-only too): Administrator (every key),
+Executive (dashboard.view, export.csv), Analyst (dashboard.view, people.view, export.csv),
+Viewer (dashboard.view). Custom roles carry any subset. A user's effective permissions are
+the union over every role reaching them (14.3). Enforcement is a table in
+backend/src/auth.js keyed by method and path prefix; the frontend only hides what the
+caller cannot use (the backend is the guard). A refused call answers 403 {error:
+"You do not have permission to <verb>", required: "<key>"}; the frontend shows the
+error text and, on a page-level refusal, an EmptyState "You do not have access to this
+page" with the required key.
+
+### 14.2 Schema (db.js additions, owner I; CREATE TABLE IF NOT EXISTS like the rest)
+
+users: id, username TEXT UNIQUE NOT NULL (lowercase, trimmed; for AD users the sAMAccountName
+lowercased), display_name, email, source TEXT NOT NULL ('local' | 'ad'), password_hash
+(local only; scrypt, format "scrypt$N$r$p$<salt b64>$<hash b64>", N 16384 r 8 p 1, 16 byte
+salt, 32 byte key; argon2 is NOT used because npm 12 blocks native install scripts),
+default_password INTEGER (1 while the seeded admin still has M0nkside; cleared on change),
+active INTEGER NOT NULL DEFAULT 1, ad_dn, ad_sid, ad_upn, ad_guid, ad_groups_json (group
+DNs and SIDs at the last login or sync), ad_ou (the OU part of the DN: everything after the
+first RDN, e.g. "OU=Engineering,OU=Users,DC=corp,DC=example,DC=com"), ad_attrs_json
+({department, company, division, title, office, manager, employee_id, country}, whatever
+AD returned), person_key (the People row whose email matches the user's email in the active
+dataset, refreshed at login and at promote; NULL when none), created_at, updated_at,
+last_login_at, failed_logins INTEGER DEFAULT 0, locked_until TEXT.
+
+roles: id, name UNIQUE, description, system INTEGER DEFAULT 0, permissions_json (array of
+keys), created_at, updated_at.
+
+role_assignments: id, role_id, subject_type ('user' | 'ad_group' | 'ad_ou'), user_id
+(subject_type user), ad_dn, ad_sid, ad_name (ad_group and ad_ou: the DN is the identity,
+SID kept for groups, name for display), created_at, UNIQUE(role_id, subject_type,
+user_id, ad_dn).
+
+sessions: token_hash TEXT PRIMARY KEY (sha256 of the cookie value), user_id, created_at,
+last_seen_at, expires_at, ip, user_agent. Sessions live 12 hours idle and 7 days absolute;
+last_seen_at is bumped at most once a minute. Every session of a user is dropped when the
+user is disabled, deleted, or has the password reset by an admin (own self-service change
+keeps the current session only).
+
+auth_events: id, at, kind ('login_ok' | 'login_fail' | 'login_locked' | 'logout' |
+'password_change' | 'password_reset' | 'user_created' | 'user_updated' | 'user_deleted' |
+'role_created' | 'role_updated' | 'role_deleted' | 'assignment_added' |
+'assignment_removed' | 'ad_test' | 'ad_sync' | 'ad_config'), username, user_id, source,
+ip, detail (plain text, never a password or secret), actor_user_id. Kept 180 days
+(pruned at boot and once a day).
+
+First boot (server.js and tests/helpers after db.open): when the users table is empty,
+insert admin / M0nkside (display_name Administrator, source local, default_password 1)
+and assign the Administrator role; log "[auth] seeded the initial administrator account
+admin (change its password under Settings > Users)". Settings > Users shows a warning
+banner while any active user still has default_password = 1.
+
+### 14.3 Sign-in rules (backend/src/services/authService.js and auth.js, owner I)
+
+POST /api/auth/login {username, password}. Resolution order:
+1. username is trimmed and lowercased. "DOMAIN\name" and "name@domain" are domain
+   qualified; a bare name is tried as a LOCAL user first, then as a domain user when AD is
+   enabled and no active local user has that name.
+2. Local: user missing, disabled, or wrong password all answer 401 {error: "Wrong username
+   or password", code: "bad_credentials"} (the audit row says which); after 5 failures in
+   10 minutes the account locks for 15 minutes: 423 {error: "Too many failed sign-ins.
+   Try again in N minutes.", code: "locked"}.
+3. AD (ad.enabled true): the user binds AS THEMSELVES on a fresh connection (that is the
+   password check), then the service account reads their record and transitive groups
+   (nested through matching rule 1.2.840.113556.1.4.1941, primary group by RID, disabled
+   accounts rejected). Outcomes: bad password 401 bad_credentials; disabled in AD 401
+   {code: "ad_disabled", error: "This domain account is disabled."}; valid user but no role
+   reaches them 403 {code: "no_role", error: "Your domain account signed in but no AIxP
+   role is assigned to you, your groups or your organizational unit. Ask an
+   administrator."}; domain controllers unreachable or the service account failing 503
+   {code: "ad_unreachable", error: "<the mapped error, 14.5>", detail: [attempt lines]}.
+   Local sign-in keeps working during an AD outage. Three AD failures for one name in 10
+   minutes pause further AD attempts for that name for 10 minutes (the app must not lock
+   the domain account): 423 code "locked".
+4. On an AD success the user row is upserted by ad_guid (fallback ad_sid, then
+   username + source ad): display_name, email, ad_dn, ad_upn, ad_ou, ad_groups_json,
+   ad_attrs_json refreshed; person_key refreshed from the active dataset's people by
+   email (lowercase). A pre-provisioned AD user (14.4, added by an admin before their
+   first login) is matched the same way.
+5. Effective permissions = union of roles assigned to: the user directly (subject user);
+   any ad_group whose DN (case-insensitive) or SID is in the user's groups; any ad_ou
+   whose DN is a suffix of the user's DN (case-insensitive, boundary at a comma). Local
+   users only get direct assignments. An active user with zero permissions cannot sign in
+   (403 no_role for both sources; message for local: "This account has no role. Ask an
+   administrator.").
+6. Success: a 32 byte random token, cookie aixp_session=<token>; HttpOnly; SameSite=Lax;
+   Path=/; Max-Age=604800 (Secure is added when the request arrived over https, judged by
+   x-forwarded-proto https or req.secure); answer = the session body below.
+
+CSRF: every non-GET /api request (login included) must carry the header
+x-aixp-csrf: 1, else 403 {error: "Missing request header", code: "csrf"}. The frontend
+api.js adds it to every non-GET call. Cross-site forms cannot set it.
+
+GET /api/auth/session -> {authenticated: true, user: {id, username, display_name, email,
+source, default_password, person_key, ad_ou, ad_attrs}, permissions: [keys], roles:
+[{id, name}], ad: {enabled, domain}} or {authenticated: false, ad: {enabled, domain}}
+(200 both ways). POST /api/auth/logout -> {ok}. POST /api/auth/change-password
+{current_password, new_password} (local users; 400 when the current one is wrong or the
+new one is under 10 characters; clears default_password; keeps the current session,
+drops the others) -> {ok}. AD users get 400 {error: "Domain passwords are changed in
+Active Directory, not here."}.
+
+Password rule everywhere: 10 to 128 characters, no other composition rule; the message
+says exactly that.
+
+### 14.4 Access routes (backend/src/routes/access.js, owner I; all need access.manage)
+
+| Method | Path | Body / notes |
+|---|---|---|
+| GET | /api/access/permissions | [{key, label, description}] |
+| GET | /api/access/users | {rows: [{id, username, display_name, email, source, active, default_password, last_login_at, created_at, locked_until, roles: [{id, name, via: 'direct' or 'group:<name>' or 'ou:<name>'}], ad_ou, ad_attrs, person_key}]} |
+| POST | /api/access/users | {username, display_name, email, password, role_ids} creates a LOCAL user (409 on a taken username; 400 on the password rule) |
+| POST | /api/access/users/ad | {dn} pre-provisions an AD user from a directory search (14.5): reads the record with the service account, inserts source ad, no password; 409 when present |
+| PUT | /api/access/users/:id | {display_name, email, active, role_ids} (role_ids replaces the DIRECT assignments only); AD users accept active and role_ids only; the caller cannot disable themselves; the last active Administrator cannot be disabled |
+| PUT | /api/access/users/:id/password | {password} admin reset of a local user; drops that user's sessions; sets default_password 0; 400 for an AD user |
+| DELETE | /api/access/users/:id | not self, not the last active Administrator; drops sessions and direct assignments |
+| GET | /api/access/roles | {rows: [{id, name, description, system, permissions, user_count, group_count, ou_count}]} |
+| POST | /api/access/roles | {name, description, permissions} (name 2 to 60 chars, unique case-insensitive; permissions must be catalogue keys, at least one) |
+| PUT | /api/access/roles/:id | same fields; a system role answers 400 "System roles cannot be edited" |
+| DELETE | /api/access/roles/:id | 400 for a system role; otherwise removes its assignments too |
+| GET | /api/access/roles/:id/assignments | {rows: [{id, subject_type, user: {id, username, display_name, source} or null, ad_dn, ad_sid, ad_name, created_at}]} |
+| POST | /api/access/roles/:id/assignments | {subject_type: 'user', user_id} or {subject_type: 'ad_group' or 'ad_ou', ad_dn, ad_sid, ad_name}; 409 duplicate; ad_* need ad.enabled |
+| DELETE | /api/access/roles/:id/assignments/:aid | |
+| GET | /api/access/directory | {config (ad.* keys, bind_password as {set}), discovered: {servers, base_dn, url, at, error}, status: {last_test_at, last_test_ok, last_test, last_sync_at, last_sync}, user_count} |
+| PUT | /api/access/directory | patch of ad.* keys (14.5); saving runs discovery in the background and answers at once with the saved config; secrets follow the settings rules ('' keeps, null clears) |
+| POST | /api/access/directory/test | the checklist (14.5); 200 even when a step fails |
+| GET | /api/access/directory/search?type=user,group,ou&q= | type is one of user, group, ou; up to 50 rows: user {dn, sam, upn, display_name, email, disabled, ou}, group {dn, name, sid, description}, ou {dn, name, path}; 400 when AD is disabled; 503 with the mapped error when unreachable |
+| POST | /api/access/directory/sync | refreshes ad_groups_json, ad_ou, ad_attrs_json, active (disabled in AD -> active 0 when ad.deactivate_removed) for every AD user; {users, updated, deactivated, errors: []}; also runs every ad.sync_minutes when enabled |
+| GET | /api/access/events?limit=200&kind= | {rows} newest first |
+
+Every mutation writes an auth_events row with actor_user_id and broadcasts
+access.changed {what: users, roles, assignments or directory}.
+
+### 14.5 Active Directory (backend/src/services/directory.js, owner I)
+
+Dependency: ldapts ^9 (pure JavaScript, no install script; already installed). Settings
+keys (defaults.js, VALIDATORS in settings.js): ad.enabled false, ad.domain '' (lowercased),
+ad.bind_user '' (typed as name, DOMAIN\name or name@domain; bound as the UPN form),
+ad.bind_password (SECRET, encrypted like the Power BI secrets, add it to SECRET_KEYS),
+ad.servers '' (comma or space separated; blank = discover), ad.base_dn '' (blank =
+discover), ad.tls_mode 'auto' | 'ldaps' | 'starttls', ad.tls_verify true, ad.ca_cert ''
+(PEM), ad.sync_minutes 60 (5..1440), ad.deactivate_removed true, ad.discovered {servers,
+base_dn, url, at, error} (written by the service, not the validator), ad.status
+{last_test_at, last_test_ok, last_test, last_sync_at, last_sync}. GET /api/settings
+(settings.manage) omits every ad.* key; the directory page reads /api/access/directory
+instead. ad.* keys are rejected by PUT /api/settings with 400 "Directory settings are
+saved under /api/access/directory".
+
+Background discovery, on save and on every test: domain controllers from DNS SRV
+_ldap._tcp.dc._msdcs.<domain> then _ldap._tcp.<domain> (sorted by priority then weight;
+ad.servers overrides); base DN from the domain (dc=a,dc=b) confirmed against the RootDSE
+defaultNamingContext; transport LDAPS 636 first, StartTLS on 389 second, unless ad.tls_mode
+pins one; a server typed as ldaps://, starttls:// or ldap:// pins its own transport (ldap://
+is plain and labelled "passwords cross the wire unencrypted" in the UI). tlsOptions go ONLY
+on an ldaps:// client (handing them to a plain client makes ldapts negotiate TLS on 389
+and the DC resets the socket). Connect timeout 8 s, operation timeout 30 s, paged searches
+of 500. The reference implementation to copy from is
+D:\VSCode Projects\CohesityDashBoard\Dashboard\backend\services\directory.js (read it,
+port the pure helpers and connect() verbatim, adapt the settings calls).
+
+Error mapping (the strings the admin sees; keep them): "No domain controllers found for
+<domain>. Add DNS SRV records or list servers explicitly."; "<server> requires LDAP
+signing: authenticated binds must use LDAPS or StartTLS, and neither could be established
+(<attempts>). Install a server certificate on the domain controller." (LDAP error 8);
+"Invalid credentials." (LDAP 49 / data 52e, stops at the first DC so the account is not
+locked out); "TLS handshake failed (the domain controller offered no certificate on 636?)";
+"StartTLS refused: the domain controller has no server certificate (LDAP error 52)";
+"connection refused"; "connection timed out"; "hostname did not resolve"; "Could not
+connect to any domain controller: <attempt lines>". Every error object carries code
+(NO_SERVERS, TLS_REQUIRED, INVALID_CREDENTIALS, UNREACHABLE, NOT_CONFIGURED) and attempts.
+
+POST /api/access/directory/test answers a checklist, one step per line, each {key, ok,
+label, detail}: dns (servers found and which record answered, or that ad.servers was
+used), connect (the url that answered, transport, TLS verified or not), bind (bound as
+<upn>), base_dn (confirmed by RootDSE or derived), users (count of person objects), groups
+(count), ous (count), plus {ok: all steps ok, duration_ms, steps: [...]}. The test also
+stores ad.status and ad.discovered. A test never throws on configuration; a missing
+domain or account answers with the first step failed and the reason.
+
+Attributes read for a user: sAMAccountName, userPrincipalName, displayName, cn, mail,
+objectGUID, objectSid, userAccountControl, primaryGroupID, distinguishedName, department,
+company, division, title, physicalDeliveryOfficeName, manager, employeeID, co. OU = the DN
+minus its first RDN. Groups: sAMAccountName, cn, description, objectGUID, objectSid.
+OUs: search (objectClass=organizationalUnit), name = ou attribute, path = the OU names from
+the root down joined with " / ".
+
+Tests (tests/directory.test.js, owner I) inject a fake client through setClientFactory and
+a fake SRV resolver: discovery order, UPN forms, nested and primary groups, disabled users,
+OU suffix matching, every error mapping, and the login outcomes of 14.3 end to end through
+the app (local first, then AD; no_role; ad_unreachable keeps local login working).
+
+### 14.6 Frontend (owner J)
+
+- lib/auth.jsx: AuthProvider + useAuth() -> {loading, user, permissions, roles, ad, can(key),
+  refresh(), logout()}. GET /api/auth/session once at mount and after login; api.js adds
+  x-aixp-csrf: 1 to every non-GET and, on a 401 from any call while signed in, calls
+  refresh() so the app falls back to the login page. VITE_MOCK: session answers an
+  Administrator with every key.
+- components/AuthGate.jsx becomes the login page (same card, same tokens): username and
+  password fields, "Sign in", a line under the form "Domain accounts: use name@<domain>
+  or DOMAIN\name" only when ad.enabled is true, the server's error text verbatim in the
+  alert (bad_credentials, locked with the minutes, ad_unreachable with a "Details" fold
+  showing the attempt lines, no_role, ad_disabled). Enter submits. No "forgot password"
+  link (resets are by an administrator; say so in one muted line).
+- Nav: an account menu at the right (display name, source chip "Local" or "Domain",
+  Change password for local users opening a Dialog, Sign out). Settings link only with
+  settings.manage, data.manage or access.manage.
+- Sidebar: Users needs people.view; everything else dashboard.view; a user without
+  dashboard.view lands on the first page they can see (Settings) and the landing route
+  shows the EmptyState.
+- Pages: a 403 from the page's main query renders EmptyState "You do not have access to
+  this page" with the required key from the error body. Top users tables and user
+  drawers are hidden without people.view (OverviewPage top 10 card, PlatformPage top
+  users, report rows do not open the drawer).
+- Settings page: the section list gains a group label "Access" with Users, Roles,
+  Active Directory and Sign-in activity (ids users, roles, directory, activity), shown
+  only with access.manage; the data sections need settings.manage or data.manage. Routes
+  stay /settings/:section.
+  - Users: DataTable (username, name, source chip, roles with their via text, active
+    chip, last sign-in, default-password warning chip), toolbar "Add local user" (Dialog:
+    username, name, email, password, roles checkboxes) and "Add domain user" (Dialog with
+    a typeahead over /api/access/directory/search?type=user, disabled when AD is off),
+    row menu Edit (Dialog: name, email, active, roles), Reset password (Dialog: new
+    password typed twice; shows "Signs the user out everywhere"), Disable / Enable,
+    Delete (confirm Dialog). Warning banner while any user has default_password.
+  - Roles: cards or a table of roles (name, description, system chip, permission chips,
+    counts), "New role" and Edit Dialog (name, description, permission checkboxes with
+    their descriptions), Delete with confirm, and an Assignments panel per role: three
+    lists (users, AD groups, AD OUs) with Add (typeahead over the directory search for
+    groups and OUs, a select of users for users) and remove.
+  - Active Directory: Enabled toggle, Domain, Service account, Password (SecretField
+    pattern from DataSourceSection), Advanced fold (servers, base DN, TLS mode
+    SegmentedControl, verify certificate toggle, CA certificate textarea, sync minutes,
+    deactivate removed toggle), "Save" and "Save and test" buttons, the Checklist (same
+    row style as the Power BI test) and the discovered values (servers, base DN, url,
+    when) under it, "Sync now" with the last sync summary. Plain-English hint lines:
+    what the service account needs (a normal domain account that can read the directory,
+    no admin rights), that LDAPS needs a certificate on the DC, and what each error means.
+  - Sign-in activity: DataTable of auth_events newest first with a kind filter.
+- Mocks: src/mock/auth-session.json, access-users.json, access-roles.json,
+  access-permissions.json, access-directory.json, access-events.json,
+  access-directory-test.json.
+
+### 14.7 Definition of done for this round
+
+- backend: npm test green including tests/auth.test.js rewritten for users (admin seed
+  signs in, wrong password 401, lockout 423, csrf 403, permission 403 with required,
+  session cookie works on /api/summary and the SSE stream, logout, change password, admin
+  reset drops sessions, role CRUD and assignment rules, last-admin guard), tests/access.test.js
+  and tests/directory.test.js; every other suite signs in through a helpers.login()
+  that returns a client sending the cookie and the csrf header (helpers.startApp gains
+  login(username, password) and app.as(user) sugar; the seeded admin is used by default).
+- frontend: npm run build green; login page, account menu, four access sections and the
+  permission-gated navigation screenshot-QAed in light and dark; a Viewer sees no Users
+  item, no top users, no Settings link; zero console errors; ASCII scan clean.
+- live: pm2 aixp-dashboard restarted; signing in as admin / M0nkside works on
+  localhost:3090; creating a custom role, a local user with it, signing in as that user
+  and seeing only what the role allows; AD test against a real domain is NOT possible
+  here (no DC reachable), so the fake-client suite and the error mapping are the proof
+  and the first real Save and test is the fix loop.
