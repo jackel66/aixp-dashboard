@@ -13,12 +13,15 @@ import { useToast } from '../components/ui/Toast.jsx';
 import { datasetSource } from '../components/AsOfChip.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
 import { chipStatus } from '../drawers/EvidenceDrawer.jsx';
+import Tooltip from '../components/ui/Tooltip.jsx';
+import { useAuth } from '../lib/auth.jsx';
 import { useQuery, clearQueryCache } from '../lib/query.js';
 import { api } from '../lib/api.js';
 import { PLATFORMS } from '../lib/platforms.js';
 import { count, dateLong, money } from '../lib/format.js';
 
 function CheckRow({ c, ranAt, onEvidence }) {
+  const { can } = useAuth();
   const [open, setOpen] = useState(false);
   const metrics = Object.entries(c.metrics || {});
   const id = 'chk-' + c.id + '-' + (c.platform || 'all');
@@ -33,7 +36,9 @@ function CheckRow({ c, ranAt, onEvidence }) {
         </button>
         <span className="t-small text-muted num" title="Last run">Last run {ranAt ? dateLong(ranAt) : 'not yet'}</span>
         <span className="t-small num" style={{ minWidth: 90, textAlign: 'right' }}>{c.affected ? count(c.affected) + ' affected' : 'None affected'}</span>
-        <Button variant="secondary" size="sm" onClick={() => onEvidence(c)}>Evidence</Button>
+        {can('data.all') ? <Button variant="secondary" size="sm" onClick={() => onEvidence(c)}>Evidence</Button> : (
+          <Tooltip text="Evidence needs the data.all permission"><span tabIndex={0} className="t-small text-muted" style={{ cursor: 'help' }}>Evidence unavailable</span></Tooltip>
+        )}
       </div>
       {open && (
         <div id={id} style={{ padding: '0 0 12px 22px' }}>

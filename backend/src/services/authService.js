@@ -93,34 +93,50 @@ function parseJson(s, fallback) {
   try { const v = JSON.parse(s); return v === null || v === undefined ? fallback : v; } catch (e) { return fallback; }
 }
 
-/** {permissions: [keys], roles: [{id, name, via}]} for a users row. */
+/** One matching rule for role assignments and scope grants (CONTRACT 14.3 step 5, 15.3).
+ *  Returns the via label ('direct', 'group:<name>', 'ou:<name>') or null when the row does not reach the user. */
+function matchVia(a, user, groups, userDn) {
+  if (a.subject_type === 'user') return a.user_id === user.id ? 'direct' : null;
+  if (user.source !== 'ad') return null;
+  if (a.subject_type === 'ad_group') {
+    if ((a.ad_dn && groups.has(a.ad_dn.toLowerCase())) || (a.ad_sid && groups.has(a.ad_sid.toLowerCase()))) return `group:${a.ad_name || a.ad_dn}`;
+  } else if (a.subject_type === 'ad_ou') {
+    const ou = String(a.ad_dn || '').toLowerCase();
+    if (ou && userDn.endsWith(',' + ou)) return `ou:${a.ad_name || a.ad_dn}`;
+  }
+  return null;
+}
+
+/** {permissions: [keys], roles: [{id, name, via}], scope: {all, lob_cg, via}} for a users row. */
 function effective(user) {
   const db = getDb();
   const rows = db.prepare(
     'SELECT ra.id, ra.subject_type, ra.user_id, ra.ad_dn, ra.ad_sid, ra.ad_name, r.id AS role_id, r.name, r.permissions_json FROM role_assignments ra JOIN roles r ON r.id = ra.role_id'
   ).all();
+  const grants = db.prepare("SELECT subject_type, user_id, ad_dn, ad_sid, ad_name, value FROM scope_grants WHERE dim = 'lob_cg'").all();
   const groups = new Set();
   if (user.source === 'ad') for (const g of parseJson(user.ad_groups_json, [])) groups.add(String(g).toLowerCase());
   const userDn = String(user.ad_dn || '').toLowerCase();
   const perms = new Set();
   const roles = [];
   for (const a of rows) {
-    let via = null;
-    if (a.subject_type === 'user') {
-      if (a.user_id === user.id) via = 'direct';
-    } else if (user.source === 'ad') {
-      if (a.subject_type === 'ad_group') {
-        if ((a.ad_dn && groups.has(a.ad_dn.toLowerCase())) || (a.ad_sid && groups.has(a.ad_sid.toLowerCase()))) via = `group:${a.ad_name || a.ad_dn}`;
-      } else if (a.subject_type === 'ad_ou') {
-        const ou = String(a.ad_dn || '').toLowerCase();
-        if (ou && userDn.endsWith(',' + ou)) via = `ou:${a.ad_name || a.ad_dn}`;
-      }
-    }
+    const via = matchVia(a, user, groups, userDn);
     if (!via) continue;
     roles.push({ id: a.role_id, name: a.name, via });
     for (const k of parseJson(a.permissions_json, [])) if (permissions.isKey(k)) perms.add(k);
   }
-  return { permissions: permissions.KEYS.filter((k) => perms.has(k)), roles };
+  const all = perms.has('data.all');
+  const via = {};
+  if (!all) {
+    for (const g of grants) {
+      const v = matchVia(g, user, groups, userDn);
+      if (!v) continue;
+      if (!via[g.value]) via[g.value] = [];
+      if (!via[g.value].includes(v)) via[g.value].push(v);
+    }
+  }
+  const scope = { all, lob_cg: Object.keys(via).sort(), via };
+  return { permissions: permissions.KEYS.filter((k) => perms.has(k)), roles, scope };
 }
 
 function dedupeRoles(roles) {
@@ -157,6 +173,7 @@ function sessionBody(user, eff) {
     user: publicUser(user),
     permissions: eff.permissions,
     roles: dedupeRoles(eff.roles),
+    scope: { all: eff.scope.all, lob_cg: eff.scope.lob_cg },
     ad: adInfo(),
   };
 }
@@ -446,6 +463,6 @@ module.exports = {
   hashPassword, verifyPassword, checkPasswordRule, logEvent, ensureSystemRoles, effective, dedupeRoles,
   normName, userById, publicUser, sessionBody, adInfo, refreshPersonKeys,
   createSession, resolveSession, deleteSession, dropUserSessions, prune,
-  login, applyAdRecord, upsertAdUser, findAdRow, adUsernameFor, changeOwnPassword, resetPassword, seedAdmin, resetLockState,
+  login, applyAdRecord, upsertAdUser, findAdRow, adUsernameFor, changeOwnPassword, resetPassword, seedAdmin, resetLockState, matchVia,
   parseJson, iso, sha,
 };

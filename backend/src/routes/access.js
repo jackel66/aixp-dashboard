@@ -9,6 +9,7 @@ const authService = require('../services/authService');
 const directory = require('../services/directory');
 const directorySync = require('../services/directorySync');
 const settings = require('../services/settings');
+const scopeMod = require('../services/scope');
 
 const router = express.Router();
 const log = (m) => console.log(`[access] ${m}`);
@@ -16,7 +17,7 @@ const iso = () => new Date().toISOString();
 
 const EVENT_KINDS = ['login_ok', 'login_fail', 'login_locked', 'logout', 'password_change', 'password_reset', 'user_created',
   'user_updated', 'user_deleted', 'role_created', 'role_updated', 'role_deleted', 'assignment_added', 'assignment_removed',
-  'ad_test', 'ad_sync', 'ad_config'];
+  'ad_test', 'ad_sync', 'ad_config', 'scope_added', 'scope_removed'];
 
 const actorId = (req) => req.auth.user.id;
 const ev = (req, kind, target, detail) => authService.logEvent({
@@ -54,7 +55,47 @@ function userRow(u) {
     id: u.id, username: u.username, display_name: u.display_name, email: u.email, source: u.source, active: u.active ? 1 : 0,
     default_password: u.default_password ? 1 : 0, last_login_at: u.last_login_at, created_at: u.created_at, locked_until: u.locked_until,
     roles: eff.roles, ad_ou: u.ad_ou || null, ad_attrs: authService.parseJson(u.ad_attrs_json, {}), person_key: u.person_key || null,
+    scope: scopeShape(eff.scope),
   };
+}
+
+// {all, lob_cg: [{value, via}]}: one entry per value and reason it reaches the user.
+function scopeShape(sc) {
+  const lob = [];
+  for (const value of sc.lob_cg) for (const via of sc.via[value]) lob.push({ value, via });
+  return { all: sc.all, lob_cg: lob };
+}
+
+/* ------------------------------ scope helpers --------------------------- */
+
+function validValues(raw, what) {
+  if (!Array.isArray(raw)) throw badRequest(`${what} must be an array`);
+  if (raw.length > 200) throw badRequest(`${what} can hold at most 200 values`);
+  const out = [];
+  for (const v of raw) {
+    if (typeof v !== 'string') throw badRequest(`${what} must be text values`);
+    const t = v.trim();
+    if (t.length < 1 || t.length > 200) throw badRequest('Each scope value must be 1 to 200 characters');
+    if (!out.includes(t)) out.push(t);
+  }
+  return out;
+}
+
+function directScopeValues(userId) {
+  return getDb().prepare("SELECT value FROM scope_grants WHERE subject_type = 'user' AND user_id = ? AND dim = 'lob_cg' ORDER BY value").all(userId).map((r) => r.value);
+}
+
+// Replace a user's DIRECT grants; returns {added, removed}.
+function setDirectScopes(userId, values, actor) {
+  const db = getDb();
+  const have = directScopeValues(userId);
+  const added = values.filter((v) => !have.includes(v));
+  const removed = have.filter((v) => !values.includes(v));
+  const ins = db.prepare("INSERT INTO scope_grants (subject_type, user_id, ad_dn, dim, value, created_at, created_by) VALUES ('user', ?, '', 'lob_cg', ?, ?, ?)");
+  const del = db.prepare("DELETE FROM scope_grants WHERE subject_type = 'user' AND user_id = ? AND dim = 'lob_cg' AND value = ?");
+  for (const v of added) ins.run(userId, v, iso(), actor);
+  for (const v of removed) del.run(userId, v);
+  return { added, removed };
 }
 
 function validRoleIds(ids) {
@@ -99,6 +140,7 @@ router.post('/users', wrap(async (req, res) => {
   }
   authService.checkPasswordRule(b.password);
   const roleIds = validRoleIds(b.role_ids) || [];
+  const scopeValues = b.lob_cg === undefined ? [] : validValues(b.lob_cg, 'lob_cg');
   const db = getDb();
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) throw conflict(`The username "${username}" is already taken`);
   const display = typeof b.display_name === 'string' && b.display_name.trim() ? b.display_name.trim().slice(0, 120) : username;
@@ -110,10 +152,12 @@ router.post('/users', wrap(async (req, res) => {
     id = db.prepare("INSERT INTO users (username, display_name, email, source, password_hash, default_password, active, created_at, updated_at) VALUES (?, ?, ?, 'local', ?, 0, 1, ?, ?)")
       .run(username, display, email, hash, now, now).lastInsertRowid;
     setDirectRoles(id, roleIds);
+    setDirectScopes(id, scopeValues, actorId(req));
   })();
   authService.refreshPersonKeys(db, null, id);
   const u = authService.userById(id);
   ev(req, 'user_created', u, `local user created with ${roleIds.length} role(s)`);
+  if (scopeValues.length) { ev(req, 'scope_added', u, `scope for ${u.username}: ${scopeValues.join(', ')}`); changed('scopes'); }
   changed('users');
   res.status(201).json(userRow(u));
 }));
@@ -145,6 +189,7 @@ router.put('/users/:id', wrap((req, res) => {
   if (!u) throw notFound('User');
   const b = req.body || {};
   const roleIds = validRoleIds(b.role_ids);
+  const scopeValues = b.lob_cg === undefined ? undefined : validValues(b.lob_cg, 'lob_cg');
   let active = u.active;
   if (b.active !== undefined) {
     if (b.active !== true && b.active !== false && b.active !== 0 && b.active !== 1) throw badRequest('active must be true or false');
@@ -171,9 +216,11 @@ router.put('/users/:id', wrap((req, res) => {
   }
   sets.push('active = ?'); args.push(active);
   sets.push('updated_at = ?'); args.push(iso());
+  let scopeDiff = null;
   db.transaction(() => {
     db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...args, id);
     if (roleIds) setDirectRoles(id, roleIds);
+    if (scopeValues) scopeDiff = setDirectScopes(id, scopeValues, actorId(req));
   })();
   if (active === 0) authService.dropUserSessions(id);
   authService.refreshPersonKeys(db, null, id);
@@ -182,7 +229,11 @@ router.put('/users/:id', wrap((req, res) => {
   if (active !== u.active) notes.push(active ? 'enabled' : 'disabled');
   if (roleIds) notes.push('roles replaced');
   if (b.display_name !== undefined || b.email !== undefined) notes.push('details edited');
+  if (scopeDiff) notes.push('scope replaced');
   ev(req, 'user_updated', fresh, notes.join(', ') || 'no change');
+  if (scopeDiff && scopeDiff.added.length) ev(req, 'scope_added', fresh, `scope for ${fresh.username}: ${scopeDiff.added.join(', ')}`);
+  if (scopeDiff && scopeDiff.removed.length) ev(req, 'scope_removed', fresh, `scope for ${fresh.username}: ${scopeDiff.removed.join(', ')}`);
+  if (scopeDiff && (scopeDiff.added.length || scopeDiff.removed.length)) changed('scopes');
   changed('users');
   res.json(userRow(fresh));
 }));
@@ -207,6 +258,7 @@ router.delete('/users/:id', wrap((req, res) => {
   db.transaction(() => {
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
     db.prepare("DELETE FROM role_assignments WHERE subject_type = 'user' AND user_id = ?").run(id);
+    db.prepare("DELETE FROM scope_grants WHERE subject_type = 'user' AND user_id = ?").run(id);
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
   })();
   ev(req, 'user_deleted', u, 'user deleted');
@@ -347,6 +399,116 @@ router.delete('/roles/:id/assignments/:aid', wrap((req, res) => {
   db.prepare('DELETE FROM role_assignments WHERE id = ?').run(aid);
   ev(req, 'assignment_removed', null, `role "${r.name}" <- ${a.subject_type} ${a.subject_type === 'user' ? (authService.userById(a.user_id) || {}).username : a.ad_name}`);
   changed('assignments');
+  res.json({ ok: true });
+}));
+
+/* ------------------------------ data scopes ----------------------------- */
+
+const UNASSIGNED_LABEL = 'Unassigned';
+
+function activeDatasetId() {
+  const a = getDb().prepare("SELECT id FROM datasets WHERE status = 'active'").get();
+  return a ? a.id : null;
+}
+
+// {value, sort, people} for the active dataset, Unassigned folded into one entry.
+function datasetLobValues() {
+  const ds = activeDatasetId();
+  const out = new Map();
+  let unassigned = 0;
+  if (ds) {
+    for (const r of getDb().prepare('SELECT lob_cg AS v, min(lob_cg_sort) AS s, count(*) AS n FROM people WHERE dataset_id = ? GROUP BY lob_cg').all(ds)) {
+      if (scopeMod.isUnassignedValue(r.v)) { unassigned += r.n; continue; }
+      out.set(r.v, { value: r.v, sort: r.s === null ? 500 : r.s, people: r.n });
+    }
+  }
+  out.set(UNASSIGNED_LABEL, { value: UNASSIGNED_LABEL, sort: 998, people: unassigned });
+  return out;
+}
+
+router.get('/scope-values', (req, res) => {
+  const known = datasetLobValues();
+  const values = Array.from(known.values()).map((v) => ({ dim: 'lob_cg', value: v.value, sort: v.sort, people: v.people, in_active_dataset: true }));
+  values.sort((a, b) => a.sort - b.sort || a.value.localeCompare(b.value));
+  const extra = getDb().prepare("SELECT DISTINCT value FROM scope_grants WHERE dim = 'lob_cg' ORDER BY value").all()
+    .map((r) => r.value).filter((v) => !known.has(v));
+  for (const v of extra) values.push({ dim: 'lob_cg', value: v, sort: 997, people: 0, in_active_dataset: false });
+  res.json({ values });
+});
+
+function scopeGrantShape(g, known) {
+  let user = null;
+  if (g.subject_type === 'user') {
+    const u = authService.userById(g.user_id);
+    user = u ? { id: u.id, username: u.username, display_name: u.display_name, source: u.source } : null;
+  }
+  return {
+    id: g.id, subject_type: g.subject_type, user, ad_dn: g.ad_dn || null, ad_sid: g.ad_sid || null, ad_name: g.ad_name || null,
+    dim: g.dim, value: g.value, in_active_dataset: known.has(g.value), created_at: g.created_at,
+  };
+}
+
+function scopeRows(where, args) {
+  const known = datasetLobValues();
+  const rows = getDb().prepare(`SELECT * FROM scope_grants ${where} ORDER BY subject_type, lower(ad_dn), user_id, value`).all(...args);
+  return rows.map((g) => scopeGrantShape(g, known));
+}
+
+router.get('/scopes', (req, res) => res.json({ rows: scopeRows('', []) }));
+
+router.post('/scopes', wrap((req, res) => {
+  const b = req.body || {};
+  if (b.dim !== undefined && b.dim !== 'lob_cg') throw badRequest('Only LOB-CG scopes are supported');
+  const values = validValues(b.values, 'values');
+  if (!values.length) throw badRequest('Pick at least one value');
+  const db = getDb();
+  let subject;
+  let label;
+  if (b.subject_type === 'user') {
+    const uid = Number(b.user_id);
+    const u = Number.isInteger(uid) ? authService.userById(uid) : null;
+    if (!u) throw badRequest('Unknown user');
+    subject = { subject_type: 'user', user_id: uid, ad_dn: '', ad_sid: null, ad_name: null };
+    label = `user ${u.username}`;
+  } else if (b.subject_type === 'ad_group' || b.subject_type === 'ad_ou') {
+    if (!directory.isEnabled()) throw badRequest('Active Directory is not enabled');
+    if (typeof b.ad_dn !== 'string' || !b.ad_dn.trim()) throw badRequest('ad_dn is required');
+    const dn = b.ad_dn.trim();
+    const sid = b.subject_type === 'ad_group' && typeof b.ad_sid === 'string' && b.ad_sid.trim() ? b.ad_sid.trim() : null;
+    const name = typeof b.ad_name === 'string' && b.ad_name.trim() ? b.ad_name.trim().slice(0, 200) : dn;
+    subject = { subject_type: b.subject_type, user_id: 0, ad_dn: dn, ad_sid: sid, ad_name: name };
+    label = `${b.subject_type} ${name}`;
+  } else {
+    throw badRequest("subject_type must be 'user', 'ad_group' or 'ad_ou'");
+  }
+  const added = [];
+  db.transaction(() => {
+    const have = db.prepare("SELECT value FROM scope_grants WHERE subject_type = ? AND user_id = ? AND lower(ad_dn) = lower(?) AND dim = 'lob_cg'")
+      .all(subject.subject_type, subject.user_id, subject.ad_dn).map((r) => r.value);
+    const ins = db.prepare("INSERT INTO scope_grants (subject_type, user_id, ad_dn, ad_sid, ad_name, dim, value, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'lob_cg', ?, ?, ?)");
+    for (const v of values) {
+      if (have.includes(v)) continue;
+      ins.run(subject.subject_type, subject.user_id, subject.ad_dn, subject.ad_sid, subject.ad_name, v, iso(), actorId(req));
+      added.push(v);
+    }
+  })();
+  if (added.length) {
+    ev(req, 'scope_added', null, `scope for ${label}: ${added.join(', ')}`);
+    changed('scopes');
+  }
+  const rows = scopeRows("WHERE subject_type = ? AND user_id = ? AND lower(ad_dn) = lower(?)", [subject.subject_type, subject.user_id, subject.ad_dn]);
+  res.status(201).json({ rows });
+}));
+
+router.delete('/scopes/:id', wrap((req, res) => {
+  const id = idParam(req.params.id, 'Scope');
+  const db = getDb();
+  const g = db.prepare('SELECT * FROM scope_grants WHERE id = ?').get(id);
+  if (!g) throw notFound('Scope');
+  db.prepare('DELETE FROM scope_grants WHERE id = ?').run(id);
+  const who = g.subject_type === 'user' ? `user ${(authService.userById(g.user_id) || {}).username}` : `${g.subject_type} ${g.ad_name || g.ad_dn}`;
+  ev(req, 'scope_removed', null, `scope for ${who}: ${g.value}`);
+  changed('scopes');
   res.json({ ok: true });
 }));
 

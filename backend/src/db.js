@@ -353,6 +353,20 @@ CREATE TABLE IF NOT EXISTS auth_events (
   actor_user_id INTEGER
 );
 CREATE INDEX IF NOT EXISTS ix_auth_events_at ON auth_events(at);
+
+CREATE TABLE IF NOT EXISTS scope_grants (
+  id INTEGER PRIMARY KEY,
+  subject_type TEXT NOT NULL,
+  user_id INTEGER NOT NULL DEFAULT 0,
+  ad_dn TEXT NOT NULL DEFAULT '',
+  ad_sid TEXT,
+  ad_name TEXT,
+  dim TEXT NOT NULL DEFAULT 'lob_cg',
+  value TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  created_by INTEGER,
+  UNIQUE (subject_type, user_id, ad_dn, dim, value)
+);
 `;
 
 let db = null;

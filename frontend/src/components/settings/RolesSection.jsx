@@ -42,7 +42,7 @@ function RoleDialog({ role, perms, onClose }) {
         <Field label="Description" htmlFor="rd-desc"><input id="rd-desc" className="input w-full" disabled={readOnly} value={f.description} onChange={(e) => set('description', e.target.value)} /></Field>
         <Field label="Permissions">
           <div className="flex flex-col gap-2">
-            {perms.map((p) => (
+            {perms.slice().sort((a, b) => (a.key === 'data.all') - (b.key === 'data.all')).map((p) => (
               <label key={p.key} className="flex items-start gap-2">
                 <input type="checkbox" style={{ marginTop: 3 }} disabled={readOnly} checked={f.permissions.includes(p.key)} onChange={() => toggle(p.key)} />
                 <span><span style={{ fontWeight: 600 }}>{p.label}</span> <span className="t-small text-muted">({p.key})</span><br /><span className="t-small text-muted">{p.description}</span></span>

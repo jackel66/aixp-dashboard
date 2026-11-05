@@ -30,7 +30,8 @@ function sumUnit(platforms, unit) {
 export default function OverviewPage() {
   const { values, set } = useUrlFilters(DEFAULTS);
   const { openUser } = useDrawers();
-  const { can } = useAuth();
+  const { can, scope } = useAuth();
+  const scoped = !scope.all;
   const people = can('people.view');
   const basis = values.basis;
   const range = apiParams(values, ['from', 'to']);
@@ -44,7 +45,7 @@ export default function OverviewPage() {
 
   return (
     <div className="page">
-      <PageHeader eyebrow="Executive view" title="Overview"
+      <PageHeader eyebrow={scoped ? 'Your lines of business' : 'Executive view'} title="Overview"
         description={s ? 'Spend and consumption across four platforms, ' + (shownRange.from === shownRange.to ? '24 hours to ' + dateLong(shownRange.to) : dateLong(shownRange.from) + ' to ' + dateLong(shownRange.to)) + '.' : 'Spend and consumption across four platforms.'}
         right={s ? <AsOfChip asOf={s.asOf} dataset={s.dataset} /> : null} />
       <FilterBar values={values} set={set} asOf={s ? s.asOf : ''} range={shownRange} showRange={!!s} />
@@ -71,7 +72,7 @@ export default function OverviewPage() {
               </motion.section>
 
               <div className="grid-16" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))' }}>
-                <Card title="Spend trend" caption={'US dollars per ' + values.bucket + ', ' + basis + ' basis, stacked by platform.'}
+                <Card title="Spend trend" caption={'US dollars per ' + values.bucket + ', ' + basis + ' basis, stacked by platform.' + (scoped && sm.seat_basis_note ? ' ' + sm.seat_basis_note + '.' : '')}
                   right={<SegmentedControl label="Trend grain" value={values.bucket} options={BUCKETS} onChange={(v) => set({ bucket: v })} />}>
                   <DataState q={trend} skeleton={<SkeletonCard height={280} />}>
                     {(t) => <SpendTrend t={t} />}

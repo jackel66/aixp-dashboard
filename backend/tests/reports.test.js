@@ -65,7 +65,7 @@ test('every route answers with the contract keys', async () => {
   assert.ok(an.models.length === 3 && an.models[0].share > 0);
 
   const o = await get('/api/organization?dim=lob_cg');
-  assert.deepEqual(keys(o), ['asOf', 'basis', 'dim', 'measure', 'rows', 'totals']);
+  assert.deepEqual(keys(o), ['asOf', 'basis', 'dim', 'measure', 'rows', 'scope', 'totals']);
   const cell = await get(`/api/organization/cell?dim=lob_cg&key=${encodeURIComponent(o.rows[0].key)}&platform=anthropic`);
   assert.deepEqual(keys(cell), ['contributors', 'share_of_column', 'share_of_row', 'total']);
   assert.ok(cell.contributors.length > 0 && cell.contributors.length <= 5);

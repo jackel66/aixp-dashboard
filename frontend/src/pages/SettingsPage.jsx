@@ -11,6 +11,7 @@ import FixturesSection from '../components/settings/FixturesSection.jsx';
 import ThemeSection from '../components/settings/ThemeSection.jsx';
 import UsersSection from '../components/settings/UsersSection.jsx';
 import RolesSection from '../components/settings/RolesSection.jsx';
+import ScopesSection from '../components/settings/ScopesSection.jsx';
 import DirectorySection from '../components/settings/DirectorySection.jsx';
 import ActivitySection from '../components/settings/ActivitySection.jsx';
 import { useAuth } from '../lib/auth.jsx';
@@ -27,6 +28,7 @@ const SECTIONS = [
   { id: 'theme', label: 'Theme', group: 'data', Cmp: ThemeSection },
   { id: 'users', label: 'Users', group: 'access', Cmp: UsersSection },
   { id: 'roles', label: 'Roles', group: 'access', Cmp: RolesSection },
+  { id: 'scopes', label: 'Data scopes', group: 'access', Cmp: ScopesSection },
   { id: 'directory', label: 'Active Directory', group: 'access', Cmp: DirectorySection },
   { id: 'activity', label: 'Sign-in activity', group: 'access', Cmp: ActivitySection }
 ];

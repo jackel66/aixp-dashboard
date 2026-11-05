@@ -8,6 +8,7 @@ import Tooltip from '../ui/Tooltip.jsx';
 import { useToast } from '../ui/Toast.jsx';
 import { Field } from './shared.jsx';
 import DirectoryPicker from './DirectoryPicker.jsx';
+import { ScopeValueChecks } from './ScopesSection.jsx';
 import { ACCESS_EVENTS, PASSWORD_RULE, passwordOk, whenText, isLocked } from './access.js';
 import { useQuery, clearQueryCache } from '../../lib/query.js';
 import { useAuth } from '../../lib/auth.jsx';
@@ -25,6 +26,11 @@ function RoleChecks({ roles, value, onChange }) {
       ))}
     </div>
   );
+}
+
+function useScopeValues() {
+  const q = useQuery('/access/scope-values', {}, { events: ACCESS_EVENTS });
+  return (q.data && q.data.values) || [];
 }
 
 function useSubmit(onDone) {
@@ -45,7 +51,8 @@ function useSubmit(onDone) {
 }
 
 function AddLocalDialog({ roles, onClose }) {
-  const [f, setF] = useState({ username: '', display_name: '', email: '', password: '', role_ids: [] });
+  const scopeValues = useScopeValues();
+  const [f, setF] = useState({ username: '', display_name: '', email: '', password: '', role_ids: [], lob_cg: [] });
   const { busy, run } = useSubmit(onClose);
   const set = (k, v) => setF((o) => ({ ...o, [k]: v }));
   const uname = f.username.trim().toLowerCase();
@@ -53,7 +60,10 @@ function AddLocalDialog({ roles, onClose }) {
   const submit = (ev) => {
     if (ev) ev.preventDefault();
     if (problem || busy) return;
-    run(() => api.post('/access/users', { username: uname, display_name: f.display_name.trim(), email: f.email.trim(), password: f.password, role_ids: f.role_ids }), 'User added');
+    run(async () => {
+      const created = await api.post('/access/users', { username: uname, display_name: f.display_name.trim(), email: f.email.trim(), password: f.password, role_ids: f.role_ids });
+      if (f.lob_cg.length && created && created.id) await api.put('/access/users/' + created.id, { lob_cg: f.lob_cg });
+    }, 'User added');
   };
   return (
     <Dialog open title="Add local user" onClose={onClose}
@@ -64,6 +74,9 @@ function AddLocalDialog({ roles, onClose }) {
         <Field label="Email" htmlFor="au-mail" hint="Optional. Used to match the person in the usage data."><input id="au-mail" className="input w-full" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} /></Field>
         <Field label="Password" htmlFor="au-pw" hint={PASSWORD_RULE}><input id="au-pw" className="input w-full" type="password" autoComplete="new-password" value={f.password} onChange={(e) => set('password', e.target.value)} /></Field>
         <Field label="Roles"><RoleChecks roles={roles} value={f.role_ids} onChange={(v) => set('role_ids', v)} /></Field>
+        <Field label="Lines of business" hint="Optional. Only matters for a user whose roles do not include data.all.">
+          <ScopeValueChecks values={scopeValues} value={f.lob_cg} onChange={(v) => set('lob_cg', v)} idPrefix="alu" />
+        </Field>
         <button type="submit" className="sr-only" tabIndex={-1}>Add user</button>
       </form>
     </Dialog>
@@ -73,6 +86,8 @@ function AddLocalDialog({ roles, onClose }) {
 function AddDomainDialog({ roles, onClose }) {
   const [pick, setPick] = useState(null);
   const [roleIds, setRoleIds] = useState([]);
+  const [lobs, setLobs] = useState([]);
+  const scopeValues = useScopeValues();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -80,7 +95,12 @@ function AddDomainDialog({ roles, onClose }) {
     setBusy(true);
     try {
       const created = await api.post('/access/users/ad', { dn: pick.dn });
-      if (roleIds.length && created && created.id) await api.put('/access/users/' + created.id, { role_ids: roleIds });
+      if ((roleIds.length || lobs.length) && created && created.id) {
+        const body = {};
+        if (roleIds.length) body.role_ids = roleIds;
+        if (lobs.length) body.lob_cg = lobs;
+        await api.put('/access/users/' + created.id, body);
+      }
       toast.success('Domain user added');
       clearQueryCache();
       onClose();
@@ -95,13 +115,20 @@ function AddDomainDialog({ roles, onClose }) {
         ) : <DirectoryPicker id="ad-find" type="user" label="Find a domain user" placeholder="Start typing a name" onPick={setPick} />}
       </Field>
       <Field label="Roles" hint="Optional. Groups and organizational units can grant roles too (Roles section)."><RoleChecks roles={roles} value={roleIds} onChange={setRoleIds} /></Field>
+      <Field label="Lines of business" hint="Optional. Groups and organizational units can grant lines too (Data scopes section).">
+        <ScopeValueChecks values={scopeValues} value={lobs} onChange={setLobs} idPrefix="adu" />
+      </Field>
     </Dialog>
   );
 }
 
 function EditDialog({ user, roles, onClose }) {
   const directIds = user.roles.filter((r) => r.via === 'direct').map((r) => r.id);
-  const [f, setF] = useState({ display_name: user.display_name || '', email: user.email || '', active: !!user.active, role_ids: directIds });
+  const scopeValues = useScopeValues();
+  const lobRows = (user.scope && user.scope.lob_cg) || [];
+  const directLobs = lobRows.filter((l) => l.via === 'direct').map((l) => l.value);
+  const inheritedLobs = lobRows.filter((l) => l.via !== 'direct');
+  const [f, setF] = useState({ display_name: user.display_name || '', email: user.email || '', active: !!user.active, role_ids: directIds, lob_cg: directLobs });
   const { busy, run } = useSubmit(onClose);
   const set = (k, v) => setF((o) => ({ ...o, [k]: v }));
   const ad = user.source === 'ad';
@@ -109,7 +136,7 @@ function EditDialog({ user, roles, onClose }) {
   const submit = (ev) => {
     if (ev) ev.preventDefault();
     if (busy) return;
-    const body = ad ? { active: f.active, role_ids: f.role_ids } : { display_name: f.display_name.trim(), email: f.email.trim(), active: f.active, role_ids: f.role_ids };
+    const body = ad ? { active: f.active, role_ids: f.role_ids, lob_cg: f.lob_cg } : { display_name: f.display_name.trim(), email: f.email.trim(), active: f.active, role_ids: f.role_ids, lob_cg: f.lob_cg };
     run(() => api.put('/access/users/' + user.id, body), 'User saved');
   };
   return (
@@ -125,6 +152,12 @@ function EditDialog({ user, roles, onClose }) {
         <Field label="Status"><label className="inline-flex items-center gap-2"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} /> Active (can sign in)</label></Field>
         <Field label="Direct roles" hint={inherited.length ? 'Also reached through: ' + inherited.map((r) => r.name + ' (' + r.via.replace(':', ' ') + ')').join(', ') + '. Change those under Roles.' : undefined}>
           <RoleChecks roles={roles} value={f.role_ids} onChange={(v) => set('role_ids', v)} />
+        </Field>
+        <Field label="Lines of business" hint={user.scope && user.scope.all ? 'This user sees every line of business through a role with data.all, so these grants have no effect while that role applies.' : 'Direct grants. Groups and organizational units grant lines under Data scopes.'}>
+          <ScopeValueChecks values={scopeValues} value={f.lob_cg} onChange={(v) => set('lob_cg', v)} idPrefix="eu" />
+          {inheritedLobs.length > 0 && (
+            <p className="t-small text-muted m-0" style={{ marginTop: 6 }}>Also reached through: {inheritedLobs.map((l) => l.value + ' (' + String(l.via).replace(':', ' ') + ')').join(', ')}.</p>
+          )}
         </Field>
         <button type="submit" className="sr-only" tabIndex={-1}>Save</button>
       </form>
@@ -165,6 +198,20 @@ function DeleteDialog({ user, onClose }) {
   );
 }
 
+function ScopeCell({ scope }) {
+  if (!scope) return <span className="text-muted">none</span>;
+  if (scope.all) return <Chip tone="accent">All</Chip>;
+  const l = scope.lob_cg || [];
+  if (!l.length) return <span className="text-muted">none</span>;
+  return (
+    <span className="inline-flex gap-1 flex-wrap">
+      {l.map((x) => (
+        <Tooltip key={x.value} text={x.via === 'direct' ? 'Granted directly' : 'Granted through ' + String(x.via).replace(':', ' ')}><span tabIndex={0} className="chip chip-outline">{x.value}</span></Tooltip>
+      ))}
+    </span>
+  );
+}
+
 function StatusChips({ u }) {
   return (
     <span className="inline-flex items-center gap-1 flex-wrap">
@@ -202,6 +249,7 @@ export default function UsersSection() {
         <span key={r.id + ':' + r.via}>{r.name}{r.via !== 'direct' && <span className="t-small text-muted"> via {r.via.replace(':', ' ')}</span>}</span>
       ))}</span>
     ) : <span className="text-muted">None</span>) },
+    { key: 'scope', label: 'Scope', render: (u) => <ScopeCell scope={u.scope} /> },
     { key: 'status', label: 'Status', render: (u) => <StatusChips u={u} /> },
     { key: 'last_login_at', label: 'Last sign-in', render: (u) => <span className="num" title={whenText(u.last_login_at)} style={{ whiteSpace: 'nowrap' }}>{u.last_login_at ? new Date(u.last_login_at).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Never'}</span> },
     { key: 'actions', label: 'Actions', render: (u) => (

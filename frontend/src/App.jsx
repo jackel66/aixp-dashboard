@@ -17,7 +17,7 @@ import DataQualityPage from './pages/DataQualityPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import ReportPage from './pages/ReportPage.jsx';
-import { useAuth } from './lib/auth.jsx';
+import { useAuth, AccessWatcher } from './lib/auth.jsx';
 
 function Placeholder({ title }) {
   return (
@@ -40,6 +40,7 @@ export default function App() {
   return (
     <AuthGate>
       <LiveProvider>
+        <AccessWatcher />
         <ToastProvider>
           <DrawerHost>
             <Routes>

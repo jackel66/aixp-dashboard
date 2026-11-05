@@ -20,10 +20,10 @@ test.after(async () => {
   teardown(ctx);
 });
 
-test('permission catalogue lists the six keys with labels and descriptions', async () => {
+test('permission catalogue lists the seven keys with labels and descriptions', async () => {
   const r = await admin.call('GET', '/api/access/permissions');
   assert.equal(r.status, 200);
-  assert.deepEqual(r.json.map((p) => p.key), ['dashboard.view', 'people.view', 'export.csv', 'data.manage', 'settings.manage', 'access.manage']);
+  assert.deepEqual(r.json.map((p) => p.key), ['dashboard.view', 'people.view', 'export.csv', 'data.manage', 'settings.manage', 'access.manage', 'data.all']);
   for (const p of r.json) { assert.ok(p.label); assert.ok(p.description); }
 });
 
@@ -34,7 +34,7 @@ test('system roles are listed with counts and cannot be edited or deleted', asyn
   assert.deepEqual(names.slice(0, 4), ['Administrator', 'Executive', 'Analyst', 'Viewer']);
   const a = r.json.rows.find((x) => x.name === 'Administrator');
   assert.equal(a.system, 1);
-  assert.equal(a.permissions.length, 6);
+  assert.equal(a.permissions.length, 7);
   assert.equal(a.user_count, 1);
   assert.equal(a.group_count, 0);
   assert.equal(a.ou_count, 0);

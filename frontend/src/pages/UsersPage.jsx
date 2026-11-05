@@ -8,6 +8,7 @@ import Button from '../components/ui/Button.jsx';
 import Chip from '../components/ui/Chip.jsx';
 import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 import { useDrawers } from '../drawers/DrawerHost.jsx';
+import { useAuth } from '../lib/auth.jsx';
 import { useQuery, buildUrl } from '../lib/query.js';
 import { PLATFORMS, platformName } from '../lib/platforms.js';
 import { money, count, dateLong } from '../lib/format.js';
@@ -32,6 +33,8 @@ function PlatformDots({ platforms }) {
 export default function UsersPage() {
   const [sp, setSp] = useSearchParams();
   const { openUser } = useDrawers();
+  const { scope } = useAuth();
+  const scopeLobs = !scope.all ? scope.lob_cg : [];
   const urlQ = sp.get('q') || '';
   const sort = sp.get('sort') || SORT_DEFAULT;
   const dir = sp.get('dir') || (sort === 'name' || sort === 'lob_cg' ? 'asc' : 'desc');
@@ -115,6 +118,15 @@ export default function UsersPage() {
                       {PLATFORMS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </label>
+                  {scopeLobs.length > 1 && (
+                    <label className="inline-flex items-center gap-2 t-small text-muted">
+                      LOB-CG
+                      <select className="input" value={sp.get('lob_cg') || ''} onChange={(e) => update({ lob_cg: e.target.value, page: '' })}>
+                        <option value="">All of my lines</option>
+                        {scopeLobs.map((v) => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </label>
+                  )}
                   {orgFilters.map(([k, v]) => (
                     <button key={k} type="button" className="chip chip-accent cursor-pointer" onClick={() => update({ [k]: '', page: '' })} aria-label={'Remove filter ' + ORG_LABEL[k] + ' ' + v}>
                       {ORG_LABEL[k]}: {v} (remove)

@@ -3,6 +3,7 @@ const express = require('express');
 const reports = require('../services/reports');
 const { toCsv, flatten, flattenReport } = require('../services/csvExport');
 const runner = require('../services/reportRunner');
+const scopeMod = require('../services/scope');
 const { notFound, badRequest } = require('../errors');
 
 const router = express.Router();
@@ -10,7 +11,7 @@ const router = express.Router();
 router.get('/report/:file', (req, res) => {
   const m = /^([a-z_]+).csv$/.exec(req.params.file);
   if (!m) throw notFound('Report');
-  const rep = runner.run(m[1], req.query);
+  const rep = runner.run(m[1], req.query, req.auth.scope, scopeMod.optsFor(req));
   const { columns, rows } = flattenReport(rep);
   res.set({
     'Content-Type': 'text/csv; charset=utf-8',
@@ -25,16 +26,18 @@ router.get('/:file', (req, res) => {
   if (!m) throw notFound('Export');
   const report = m[1];
   const q = req.query;
+  const sc = req.auth.scope;
+  const so = scopeMod.optsFor(req);
   let data;
-  if (report === 'summary') data = reports.summary(q);
-  else if (report === 'trend') data = reports.trend(q);
+  if (report === 'summary') data = reports.summary(q, sc, so);
+  else if (report === 'trend') data = reports.trend(q, sc, so);
   else if (report === 'platform') {
     const id = Array.isArray(q.platform) ? q.platform[0] : q.platform;
     if (!id) throw badRequest('platform is required for the platform export');
-    data = reports.platformReport(id, q);
-  } else if (report === 'organization') data = reports.organization(q);
-  else if (report === 'models') data = reports.models(q);
-  else if (report === 'users') data = reports.users(Object.assign({}, q, { page: 1, pageSize: 100000 }), { maxPageSize: 100000 });
+    data = reports.platformReport(id, q, sc, so);
+  } else if (report === 'organization') data = reports.organization(q, sc, so);
+  else if (report === 'models') data = reports.models(q, sc, so);
+  else if (report === 'users') data = reports.users(Object.assign({}, q, { page: 1, pageSize: 100000 }), sc, { maxPageSize: 100000 });
   else throw notFound('Export');
   const { columns, rows } = flatten(report, data);
   res.set({

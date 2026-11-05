@@ -7,6 +7,7 @@ import SegmentedControl from '../components/ui/SegmentedControl.jsx';
 import Chip from '../components/ui/Chip.jsx';
 import { SkeletonCard } from '../components/ui/Skeleton.jsx';
 import Matrix from '../components/org/Matrix.jsx';
+import { useAuth } from '../lib/auth.jsx';
 import { useQuery, buildUrl } from '../lib/query.js';
 import { useUrlFilters } from '../lib/filters.js';
 import { BASIS_LABEL } from '../lib/platforms.js';
@@ -32,6 +33,7 @@ const CAPTION = {
 
 export default function OrganizationPage() {
   const { values, set } = useUrlFilters(DEFAULTS);
+  const { scope } = useAuth();
   const dim = ROWS.some((r) => r.value === values.rows) ? values.rows : DEFAULTS.rows;
   const measure = MEASURES.some((m) => m.value === values.measure) ? values.measure : DEFAULTS.measure;
   const basis = values.basis;
@@ -43,7 +45,7 @@ export default function OrganizationPage() {
   return (
     <div className="page">
       <PageHeader eyebrow="Organization" title="Who uses AI"
-        description="Spend, active people and consumption by organisational group and platform."
+        description={scope.all ? 'Spend, active people and consumption by organisational group and platform.' : 'Your lines of business: spend, active people and consumption by group and platform.'}
         right={d ? <Chip tone="outline">Data to {dateLong(d.asOf)}</Chip> : null} />
       <FilterBar values={values} set={set} showRange={false} showBasis={measure === 'spend'}>
         <SegmentedControl label="Rows" value={dim} options={ROWS} onChange={(v) => set({ rows: v })} />

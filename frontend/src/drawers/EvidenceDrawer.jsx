@@ -5,6 +5,7 @@ import Button from '../components/ui/Button.jsx';
 import StatusChip from '../components/ui/StatusChip.jsx';
 import Chip from '../components/ui/Chip.jsx';
 import { SkeletonRows } from '../components/ui/Skeleton.jsx';
+import { useAuth } from '../lib/auth.jsx';
 import { useQuery } from '../lib/query.js';
 import { isMock } from '../lib/api.js';
 import { platformName } from '../lib/platforms.js';
@@ -89,19 +90,22 @@ function Body({ d }) {
 }
 
 export default function EvidenceDrawer({ open, id, platform, onClose }) {
-  const vq = useQuery('/verification', {}, { enabled: open && !!id });
+  const { can } = useAuth();
+  const allowed = can('data.all');
+  const vq = useQuery('/verification', {}, { enabled: open && !!id && allowed });
   const runId = vq.data && vq.data.run ? vq.data.run.id : null;
   const path = id && runId ? (isMock ? '/verification-run' : '/verification/runs/' + runId + '/checks/' + encodeURIComponent(id)) : null;
-  const q = useQuery(path, { platform: platform || '' }, { enabled: open && !!path });
+  const q = useQuery(path, { platform: platform || '' }, { enabled: open && !!path && allowed });
   const d = q.data;
   const err = q.error || vq.error;
   return (
     <Drawer open={open} title={d ? d.title : 'Check evidence'} onClose={onClose}>
-      {err && d === undefined && (
+      {!allowed && <EmptyState title="Evidence needs the data.all permission" body="Evidence rows carry people from every line of business. Ask an administrator for the All lines of business permission." />}
+      {allowed && err && d === undefined && (
         <EmptyState tone="error" title="Could not load this check" body={err.message} action={<Button variant="secondary" onClick={() => { vq.reload(); q.reload(); }}>Retry</Button>} />
       )}
-      {d === undefined && !err && <SkeletonRows rows={8} rowHeight={32} />}
-      {d && <Body d={d} />}
+      {allowed && d === undefined && !err && <SkeletonRows rows={8} rowHeight={32} />}
+      {allowed && d && <Body d={d} />}
     </Drawer>
   );
 }

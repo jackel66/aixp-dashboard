@@ -39,6 +39,8 @@ function Body({ d, platform }) {
       <h3 className="t-h3" style={{ margin: '20px 0 8px' }}>Weekly spend, last 12 weeks</h3>
       <TrendChart type="line" labels={labels} series={series} height={170} ariaLabel={'Weekly spend in US dollars for ' + d.model + ', last 12 weeks'} />
 
+      {!d.top_users_hidden && (
+        <>
       <h3 className="t-h3" style={{ margin: '20px 0 8px' }}>Top 10 users</h3>
       <table className="tbl compact">
         <thead><tr><th>User</th><th>LOB-CG</th><th className="r">Spend (USD)</th><th className="r">Consumption</th></tr></thead>
@@ -53,6 +55,8 @@ function Body({ d, platform }) {
           ))}
         </tbody>
       </table>
+        </>
+      )}
     </div>
   );
 }

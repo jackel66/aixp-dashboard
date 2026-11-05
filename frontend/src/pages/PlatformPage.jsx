@@ -97,6 +97,8 @@ function PlatformContent({ p, basis }) {
         )}
       </section>
 
+      {p.seat_basis_note ? <p className="t-small text-muted m-0">{p.seat_basis_note}</p> : null}
+
       {p.github && (
         <Card title="Gross, discount and net" caption="US dollars in range. Shown side by side and never netted silently; consumption spend equals net.">
           <dl className="grid-16 m-0" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
@@ -138,7 +140,7 @@ function PlatformContent({ p, basis }) {
       </Card>
 
       <div className="grid-16" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))' }}>
-        {people && <Card title="Top users" caption={'Top 20 by spend, US dollars and ' + unit + '.'}>
+        {people && !p.top_users_hidden && <Card title="Top users" caption={'Top 20 by spend, US dollars and ' + unit + '.'}>
           <div style={{ overflow: 'auto', maxHeight: 420 }}>
             <table className="tbl compact">
               <thead><tr><th>User</th><th>LOB-CG</th><th className="r">Spend (USD)</th><th className="r">Consumption</th></tr></thead>
@@ -170,7 +172,7 @@ function PlatformContent({ p, basis }) {
               <ul className="list-none p-0 m-0 flex flex-col">
                 {p.checks.map((c, i) => (
                   <li key={c.id + i}>
-                    <button type="button" onClick={() => openCheck(c.id, p.platform.id)}
+                    <button type="button" onClick={() => { if (can('data.all')) openCheck(c.id, p.platform.id); }} disabled={!can('data.all')} title={can('data.all') ? undefined : 'Evidence needs the data.all permission'}
                       className="w-full flex items-center justify-between gap-3 py-2 bg-transparent border-0 border-b border-line cursor-pointer text-left text-ink" style={{ borderBottom: '1px solid var(--line)' }}>
                       <span>{c.title}</span>
                       <StatusChip status={c.status === 'fail' ? (c.severity === 'info' ? 'info' : c.severity === 'fail' ? 'fail' : 'warn') : c.status === 'pass' ? 'pass' : 'info'} />

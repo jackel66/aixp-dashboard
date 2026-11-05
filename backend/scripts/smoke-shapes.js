@@ -2,6 +2,10 @@
 // Seam check: call every API route the pages use and diff the key structure of the
 // answer against the mock file the page was built on (frontend/src/mock/*.json).
 // Usage: node scripts/smoke-shapes.js [baseUrl]   (default http://localhost:3090)
+// SMOKE_SCOPED=1 adds a second pass signed in as a scoped user (CONTRACT 15.4): it creates the role
+// "Scoped smoke" and the user scoped.smoke with a grant for the first LOB-CG value of the active dataset,
+// runs every route again under the budget, asserts no person_key or lob_cg outside the grant appears,
+// and deletes the user and the role afterwards.
 // Exit code 1 when any route fails, answers slowly, or lacks a key the mock has.
 const fs = require('fs');
 const path = require('path');
@@ -79,9 +83,9 @@ function missingKeys(want, have) {
   return [...want].filter((k) => !have.has(k) && !LOOSE.test(k) && !emptyArrays.some((p) => k.startsWith(p)));
 }
 
-async function get(url) {
+async function get(url, cookie) {
   const t0 = process.hrtime.bigint();
-  const res = await fetch(BASE + url, { headers: { cookie: COOKIE, 'x-aixp-csrf': '1' } });
+  const res = await fetch(BASE + url, { headers: { cookie: cookie === undefined ? COOKIE : cookie, 'x-aixp-csrf': '1' } });
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
   const text = await res.text();
   let json = null;
@@ -137,8 +141,123 @@ async function main() {
   const csv = await fetch(BASE + '/api/export/summary.csv', { headers: { cookie: COOKIE } }).then((r) => r.text()).catch(() => '');
   if (!csv.startsWith('# This dashboard provides a directional view')) { console.log('FAIL /api/export/summary.csv: caveat line missing'); failed++; }
   else console.log('ok   /api/export/summary.csv caveat first line');
+  if (process.env.SMOKE_SCOPED === '1') failed += await scopedPass(resolved);
   console.log(failed ? `\n${failed} problem(s)` : '\nall routes match the mock shapes');
   process.exit(failed ? 1 : 0);
+}
+
+async function send(method, url, body, cookie) {
+  const res = await fetch(BASE + url, {
+    method,
+    headers: { cookie: cookie === undefined ? COOKIE : cookie, 'x-aixp-csrf': '1', 'content-type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch (e) { json = null; }
+  return { status: res.status, json, text, res };
+}
+
+// A key counts as present only as a whole token, so musman2 does not make musman look leaked.
+function hasWord(text, key) {
+  const esc = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^A-Za-z0-9_.@-])${esc}([^A-Za-z0-9_.@-]|$)`).test(text);
+}
+
+// Walk a parsed answer and report any person_key or lob_cg outside the allowed sets.
+function leaks(node, allowKeys, lob, path, out) {
+  if (Array.isArray(node)) { node.forEach((v, i) => leaks(v, allowKeys, lob, `${path}[${i}]`, out)); return out; }
+  if (node && typeof node === 'object') {
+    for (const [k, v] of Object.entries(node)) {
+      if (k === 'person_key' && typeof v === 'string' && !allowKeys.has(v) && !/^Total \(/.test(v)) out.push(`${path}.person_key=${v}`);
+      if (k === 'lob_cg' && typeof v === 'string' && v !== lob) out.push(`${path}.lob_cg=${v}`);
+      leaks(v, allowKeys, lob, `${path}.${k}`, out);
+    }
+  }
+  return out;
+}
+
+async function scopedPass(adminResolved) {
+  console.log('\n-- scoped pass (SMOKE_SCOPED=1) --');
+  let failed = 0;
+  const vals = await send('GET', '/api/access/scope-values');
+  const first = vals.json && vals.json.values.find((v) => v.in_active_dataset && v.value !== 'Unassigned' && v.people > 0);
+  if (!first) { console.log('FAIL no LOB-CG value to grant'); return 1; }
+  const lob = first.value;
+  // everybody in the dataset, to know whose keys are allowed and whose are not
+  const everyone = [];
+  for (let page = 1; page < 50; page += 1) {
+    const r = await send('GET', `/api/users?pageSize=200&page=${page}&from=2000-01-01&to=2100-01-01`);
+    if (!r.json || !r.json.rows.length) break;
+    everyone.push(...r.json.rows);
+    if (everyone.length >= r.json.total) break;
+  }
+  const allowKeys = new Set(everyone.filter((u) => u.lob_cg === lob).map((u) => u.person_key));
+  const outsiders = everyone.filter((u) => u.lob_cg !== lob).map((u) => u.person_key);
+  console.log(`     granting "${lob}" (${allowKeys.size} people in scope, ${outsiders.length} outside)`);
+
+  let roleId = null;
+  let userId = null;
+  try {
+    const perms = ['dashboard.view', 'people.view', 'export.csv'];
+    const role = await send('POST', '/api/access/roles', { name: 'Scoped smoke', description: 'smoke test', permissions: perms });
+    if (role.status !== 201) { console.log(`FAIL create role: HTTP ${role.status} ${role.text.slice(0, 200)}`); return 1; }
+    roleId = role.json.id;
+    const pw = 'smoke-scoped-pass-1';
+    const user = await send('POST', '/api/access/users', { username: 'scoped.smoke', password: pw, display_name: 'Scoped smoke', role_ids: [roleId], lob_cg: [lob] });
+    if (user.status !== 201) { console.log(`FAIL create user: HTTP ${user.status} ${user.text.slice(0, 200)}`); return 1; }
+    userId = user.json.id;
+    const login = await fetch(BASE + '/api/auth/login', {
+      method: 'POST', headers: { 'content-type': 'application/json', 'x-aixp-csrf': '1' },
+      body: JSON.stringify({ username: 'scoped.smoke', password: pw }),
+    });
+    if (login.status !== 200) { console.log(`FAIL sign in as scoped.smoke: HTTP ${login.status}`); return 1; }
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+
+    const routes = ROUTES.map(([name, route]) => {
+      let r = route;
+      if (!r) {
+        const m = adminResolved;
+        if (name === 'model-detail') { const x = m.models && m.models.rows[0]; r = x ? `/api/models/${encodeURIComponent(x.platform)}/${encodeURIComponent(x.model)}` : null; }
+        else if (name === 'user-detail') { const k = [...allowKeys][0]; r = k ? `/api/users/${encodeURIComponent(k)}` : null; }
+      }
+      return [name, r];
+    }).filter(([, r]) => r);
+    // routes a scoped manager must NOT reach (permission or scope), and the status expected
+    const denied = {
+      settings: 403, 'settings-seat-rates': 403, 'settings-lob-cg-map': 403, 'access-permissions': 403, 'access-users': 403,
+      'access-roles': 403, 'access-directory': 403, 'access-events': 403, 'verification-run': 403, 'organization-cell': 403,
+    };
+    // plus the report catalogue and the CSV exports
+    const cat = await get('/api/reports', cookie);
+    for (const rep of (cat.json && cat.json.reports) || []) routes.push([`report-${rep.id}`, `/api/reports/${rep.id}`]);
+    routes.push(['export-users', '/api/export/users.csv'], ['export-platform', '/api/export/platform.csv?platform=anthropic'], ['export-organization', '/api/export/organization.csv']);
+
+    for (const [name, route] of routes) {
+      const r = await get(route, cookie);
+      const want = denied[name] || 200;
+      let problems = [];
+      if (r.status !== want) problems.push(`HTTP ${r.status}, expected ${want}`);
+      const slow = r.ms > BUDGET_MS;
+      if (slow) problems.push(`${r.ms.toFixed(0)} ms over the ${BUDGET_MS} ms budget`);
+      if (r.status === 200) {
+        if (r.json) problems.push(...leaks(r.json, allowKeys, lob, '$', []).slice(0, 3));
+        for (const k of outsiders) if (hasWord(r.text, k)) { problems.push(`response carries outside key ${k}`); break; }
+        if (name === 'organization' && r.json) {
+          const labels = r.json.rows.map((x) => x.label);
+          if (labels.some((l) => l !== lob)) problems.push(`organization rows ${labels.join(', ')}`);
+        }
+      }
+      if (problems.length) failed += 1;
+      console.log(`${problems.length ? 'WARN' : 'ok  '} [scoped] ${route}  ${r.ms.toFixed(0)} ms`);
+      for (const p of problems) console.log(`       ${p}`);
+    }
+  } finally {
+    if (userId) await send('DELETE', `/api/access/users/${userId}`);
+    if (roleId) await send('DELETE', `/api/access/roles/${roleId}`);
+    console.log('     scoped.smoke and "Scoped smoke" removed');
+  }
+  return failed;
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

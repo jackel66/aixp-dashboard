@@ -43,6 +43,7 @@ const RULES = [
   { test: (m, p) => /^\/export\/report\/users_[a-z0-9_]*\.csv$/i.test(p) || /^\/export\/users\.csv$/i.test(p), keys: ['people.view', 'export.csv'] },
   { test: (m, p) => /^\/export(\/|$)/i.test(p), keys: ['export.csv'] },
   { test: (m, p) => /^\/reports\/users_/i.test(p), keys: ['people.view'] },
+  { test: (m, p) => /^\/verification\/runs(\/|$)/i.test(p), keys: ['dashboard.view', 'data.all'] },
   { test: () => true, keys: ['dashboard.view'] },
 ];
 
@@ -63,7 +64,7 @@ function gate(req, res, next) {
     const hit = authService.resolveSession(cookieToken(req));
     if (hit) {
       const eff = authService.effective(hit.user);
-      req.auth = { user: hit.user, hash: hit.hash, permissions: eff.permissions, roles: eff.roles };
+      req.auth = { user: hit.user, hash: hit.hash, permissions: eff.permissions, roles: eff.roles, scope: eff.scope };
     }
     const keys = requiredFor(req.method, req.path);
     if (keys === null) return next();
@@ -90,7 +91,7 @@ function routes(router) {
 
   router.get('/auth/session', (req, res) => {
     if (!req.auth) return res.json({ authenticated: false, ad: authService.adInfo() });
-    const body = authService.sessionBody(req.auth.user, { permissions: req.auth.permissions, roles: req.auth.roles });
+    const body = authService.sessionBody(req.auth.user, { permissions: req.auth.permissions, roles: req.auth.roles, scope: req.auth.scope });
     return res.json(body);
   });
 

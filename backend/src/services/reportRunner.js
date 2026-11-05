@@ -76,11 +76,13 @@ const basisTotal = (basis, w, ids) => ids.reduce((a, id) => a + M.pickBasis(basi
 function orgCall(ctx, dim, basis, from, to) {
   return reports.organization({
     dataset: ctx.datasetId, from, to, dim, basis, platform: ctx.allPlatforms ? undefined : ctx.platforms,
-  });
+  }, ctx.scope, { people: ctx.canPeople });
 }
 
 function seatNote(seat) {
-  return seat.estimate ? ['Seat spend is an estimate: seats are counted as active people, not licensed seats.'] : [];
+  const out = seat.estimate ? ['Seat spend is an estimate: seats are counted as active people, not licensed seats.'] : [];
+  if (seat.note) out.push(seat.note);
+  return out;
 }
 
 // month windows clipped to the range, with the same days of the previous month for the change column
@@ -106,14 +108,15 @@ const PARTIAL_NOTE = 'Months at the edges of the range cover only the days insid
 
 function usersTop(ctx, p) {
   const ids = ctx.platforms;
-  const base = 'FROM rollup_person_day pd WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN';
+  const sc = M.personScope(ctx, 'pd');
+  const base = `FROM rollup_person_day pd${sc.join} WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN`;
   const all = ctx.db.prepare(
     `SELECT pd.person_key, sum(pd.cost_usd) AS usd, count(DISTINCT CASE WHEN ${M.ACT} THEN pd.date END) AS ad, ${pivots(ids)}
-     ${base} (${inList(ids)}) GROUP BY pd.person_key HAVING usd > 0 ORDER BY usd DESC, pd.person_key LIMIT ?`
-  ).all(ctx.datasetId, ctx.from, ctx.to, p.limit);
+     ${base} (${inList(ids)})${sc.where} GROUP BY pd.person_key HAVING usd > 0 ORDER BY usd DESC, pd.person_key LIMIT ?`
+  ).all(ctx.datasetId, ctx.from, ctx.to, ...sc.params, p.limit);
   const tot = ctx.db.prepare(
-    `SELECT sum(pd.cost_usd) AS usd, count(DISTINCT CASE WHEN ${M.ACT} THEN pd.person_key END) AS n ${base} (${inList(ids)})`
-  ).get(ctx.datasetId, ctx.from, ctx.to);
+    `SELECT sum(pd.cost_usd) AS usd, count(DISTINCT CASE WHEN ${M.ACT} THEN pd.person_key END) AS n ${base} (${inList(ids)})${sc.where}`
+  ).get(ctx.datasetId, ctx.from, ctx.to, ...sc.params);
   const people = peopleMap(ctx);
   const rows = all.map((r, i) => {
     const w = who(people, r.person_key);
@@ -133,15 +136,16 @@ function usersTop(ctx, p) {
 function usersNew(ctx, p) {
   const ids = ctx.platforms;
   const list = inList(ids);
+  const sc = M.personScope(ctx, 'pd');
   const rowsDb = ctx.db.prepare(
-    `WITH cand AS (SELECT DISTINCT pd.person_key FROM rollup_person_day pd
-        WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${list}) AND ${M.ACT}),
+    `WITH cand AS (SELECT DISTINCT pd.person_key FROM rollup_person_day pd${sc.join}
+        WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${list}) AND ${M.ACT}${sc.where}),
      newp AS (SELECT c.person_key FROM cand c WHERE NOT EXISTS (
         SELECT 1 FROM rollup_person_day b WHERE b.dataset_id = ? AND b.person_key = c.person_key AND b.date < ?
           AND b.platform IN (${list}) AND (b.cost_usd > 0 OR b.tokens > 0 OR b.credits > 0)))
      SELECT pd.person_key, pd.date, pd.platform, pd.cost_usd FROM rollup_person_day pd JOIN newp n ON n.person_key = pd.person_key
      WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${list}) AND ${M.ACT}`
-  ).all(ctx.datasetId, ctx.from, ctx.to, ctx.datasetId, ctx.from, ctx.datasetId, ctx.from, ctx.to);
+  ).all(ctx.datasetId, ctx.from, ctx.to, ...sc.params, ctx.datasetId, ctx.from, ctx.datasetId, ctx.from, ctx.to);
   const byUser = new Map();
   for (const r of rowsDb) {
     if (!byUser.has(r.person_key)) byUser.set(r.person_key, []);
@@ -174,7 +178,8 @@ function usersNew(ctx, p) {
     count.set(b, (count.get(b) || 0) + 1);
   }
   const notes = [];
-  const dsMin = ctx.db.prepare('SELECT min(date) AS d FROM rollup_platform_day WHERE dataset_id = ?').get(ctx.datasetId).d;
+  const dsDates = Object.values(M.platformDates(ctx)).map((d) => d.min).sort();
+  const dsMin = dsDates.length ? dsDates[0] : null;
   if (dsMin && ctx.from <= dsMin) notes.push(`The dataset starts on ${dsMin}; people already active on that day count as new when the range includes it.`);
   return {
     rows: all.slice(0, p.limit), totals: { user: `Total (${all.length} users)`, usd_since: round2(all.reduce((a, r) => a + r.usd_since, 0)) },
@@ -188,15 +193,16 @@ function usersInactive(ctx, p) {
   const list = inList(ids);
   const wFrom = time.addDays(ctx.from, -90);
   const wTo = time.addDays(ctx.from, -1);
+  const sc = M.personScope(ctx, 'pd');
   const rowsDb = ctx.db.prepare(
     `WITH prior AS (SELECT pd.person_key, max(CASE WHEN ${M.ACT} THEN pd.date END) AS last_seen, sum(pd.cost_usd) AS usd
-        FROM rollup_person_day pd WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${list}) AND ${M.ACT}
+        FROM rollup_person_day pd${sc.join} WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${list}) AND ${M.ACT}${sc.where}
         GROUP BY pd.person_key)
      SELECT pr.person_key, pr.last_seen, pr.usd FROM prior pr WHERE NOT EXISTS (
         SELECT 1 FROM rollup_person_day b WHERE b.dataset_id = ? AND b.person_key = pr.person_key AND b.date BETWEEN ? AND ?
           AND b.platform IN (${list}) AND (b.cost_usd > 0 OR b.tokens > 0 OR b.credits > 0))
      ORDER BY pr.usd DESC, pr.person_key`
-  ).all(ctx.datasetId, wFrom, wTo, ctx.datasetId, ctx.from, ctx.to);
+  ).all(ctx.datasetId, wFrom, wTo, ...sc.params, ctx.datasetId, ctx.from, ctx.to);
   const people = peopleMap(ctx);
   const all = rowsDb.map((r) => {
     const w = who(people, r.person_key);
@@ -214,11 +220,12 @@ function usersInactive(ctx, p) {
 function usersMulti(ctx, p) {
   const ids = ctx.platforms;
   const flags = ids.map((id) => `max(CASE WHEN pd.platform = '${id}' AND ${M.ACT} THEN 1 ELSE 0 END) AS f_${id}`).join(', ');
+  const sc = M.personScope(ctx, 'pd');
   const rowsDb = ctx.db.prepare(
     `SELECT pd.person_key, sum(pd.cost_usd) AS usd, ${pivots(ids)}, ${flags}
-     FROM rollup_person_day pd WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${inList(ids)})
+     FROM rollup_person_day pd${sc.join} WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${inList(ids)})${sc.where}
      GROUP BY pd.person_key`
-  ).all(ctx.datasetId, ctx.from, ctx.to);
+  ).all(ctx.datasetId, ctx.from, ctx.to, ...sc.params);
   const people = peopleMap(ctx);
   const all = [];
   const dist = new Map();
@@ -258,6 +265,12 @@ function usersByGroup(ctx, p) {
 }
 
 function usersUnmatched(ctx, p) {
+  if (!ctx.scope.all) {
+    const note = 'Unmatched usage is only visible with the data.all permission';
+    return {
+      rows: [], note, totals: { person_key: 'Total (0 keys)', rows: 0, usd: 0 }, chart: null, notes: [note],
+    };
+  }
   const ids = ctx.platforms;
   const rowsDb = ctx.db.prepare(
     `SELECT pd.person_key, group_concat(DISTINCT pd.platform) AS pl, sum(pd.rows) AS n, sum(pd.cost_usd) AS usd
@@ -294,11 +307,13 @@ function seatRates(ctx) {
 }
 function activePeopleByMonth(ctx, ids, fromYm, toYm) {
   const m = new Map();
+  const sc = M.personScope(ctx, 'pm');
   for (const r of ctx.db.prepare(
-    `SELECT platform, month, count(*) AS n FROM rollup_person_month
-     WHERE dataset_id = ? AND month BETWEEN ? AND ? AND platform IN (${inList(ids)}) AND (cost_usd > 0 OR tokens > 0 OR credits > 0)
-     GROUP BY platform, month`
-  ).all(ctx.datasetId, fromYm, toYm)) m.set(`${r.platform}|${r.month}`, r.n);
+    `SELECT pm.platform AS platform, pm.month AS month, count(*) AS n FROM rollup_person_month pm${sc.join}
+     WHERE pm.dataset_id = ? AND pm.month BETWEEN ? AND ? AND pm.platform IN (${inList(ids)})
+       AND (pm.cost_usd > 0 OR pm.tokens > 0 OR pm.credits > 0)${sc.where}
+     GROUP BY pm.platform, pm.month`
+  ).all(ctx.datasetId, fromYm, toYm, ...sc.params)) m.set(`${r.platform}|${r.month}`, r.n);
   return m;
 }
 
@@ -315,7 +330,8 @@ function platformsSummary(ctx) {
   const rows = ids.map((id) => {
     const d = dates[id];
     const total = w.cons[id] + w.seat[id];
-    const seats = rates.has(`${id}|${ym}`) ? rates.get(`${id}|${ym}`) : null;
+    // Licensed seats are a whole-estate contract figure; a scoped caller does not get them.
+    const seats = ctx.scope.all && rates.has(`${id}|${ym}`) ? rates.get(`${id}|${ym}`) : null;
     return {
       platform: id, as_of: d ? d.max : null, lag_days: d ? time.diffDays(d.max, ctx.asOf) : null,
       consumption_usd: round2(w.cons[id]), seat_usd: round2(w.seat[id]), total_usd: round2(total), consumption: cons(id, cs[id].consumption),
@@ -372,9 +388,7 @@ function platformsFreshness(ctx) {
   const dates = M.platformDates(ctx);
   const stale = num(settings.get('verify.stale_days', 5));
   const rowCounts = {};
-  for (const r of ctx.db.prepare('SELECT platform, sum(rows) AS n FROM rollup_platform_day WHERE dataset_id = ? GROUP BY platform').all(ctx.datasetId)) {
-    rowCounts[r.platform] = num(r.n);
-  }
+  for (const r of M.platformDays(ctx)) rowCounts[r.platform] = (rowCounts[r.platform] || 0) + num(r.rows);
   const checks = {};
   const run = reports.latestRun(ctx.db, ctx.datasetId);
   let unscoped = 0;
@@ -411,16 +425,16 @@ function platformsSeatUtilisation(ctx) {
   const rates = seatRates(ctx);
   const act = activePeopleByMonth(ctx, ids, fromYm, toYm);
   const cmap = new Map();
-  for (const r of ctx.db.prepare(
-    `SELECT platform, substr(date, 1, 7) AS m, sum(cost_usd) AS usd FROM rollup_platform_day
-     WHERE dataset_id = ? AND date BETWEEN ? AND ? AND platform IN (${inList(ids)}) GROUP BY platform, m`
-  ).all(ctx.datasetId, `${fromYm}-01`, M.monthEnd(toYm))) cmap.set(`${r.platform}|${r.m}`, num(r.usd));
+  for (const r of M.platformDays(ctx, { from: `${fromYm}-01`, to: M.monthEnd(toYm), platforms: ids })) {
+    const k = `${r.platform}|${r.date.slice(0, 7)}`;
+    cmap.set(k, (cmap.get(k) || 0) + num(r.cost_usd));
+  }
   const months = [];
   for (let ym = fromYm; ym <= toYm; ym = M.addMonths(ym, 1)) months.push(ym);
   const rows = [];
   for (const id of ids) {
     for (const ym of months) {
-      const seats = rates.has(`${id}|${ym}`) ? rates.get(`${id}|${ym}`) : null;
+      const seats = ctx.scope.all && rates.has(`${id}|${ym}`) ? rates.get(`${id}|${ym}`) : null;
       const active = act.get(`${id}|${ym}`) || 0;
       if (seats === null && !active) continue;
       const seatUsd = seat.monthly(id, ym);
@@ -444,7 +458,7 @@ function platformsSeatUtilisation(ctx) {
 // ---- models --------------------------------------------------------------------------------
 
 function modelsCost(ctx, p, q) {
-  const data = reports.models(q);
+  const data = reports.models(q, ctx.scope, { people: ctx.canPeople });
     const rows = data.rows.slice(0, p.limit).map((r) => ({
     platform: r.platform, model: r.model, usd: r.usd, consumption: r.consumption, requests: r.requests, users: r.users,
     cost_per_million: r.cost_per_unit === null ? null : round2(r.cost_per_unit * 1e6), share: Math.round(num(r.share) * 1000) / 10,
@@ -461,11 +475,15 @@ function modelsCost(ctx, p, q) {
 function topModels(ctx, n) {
   const tids = ctx.platforms.filter((i) => platformsMod.byId(i).models);
   if (!tids.length) return [];
-  return ctx.db.prepare(
-    `SELECT platform, model, sum(cost_usd) AS usd FROM rollup_model_day
-     WHERE dataset_id = ? AND date BETWEEN ? AND ? AND platform IN (${inList(tids)}) AND model <> ''
-     GROUP BY platform, model ORDER BY usd DESC, model LIMIT ?`
-  ).all(ctx.datasetId, ctx.from, ctx.to, n);
+  const agg = new Map();
+  for (const r of M.modelDays(ctx, { from: ctx.from, to: ctx.to, platforms: tids })) {
+    if (r.model === '') continue;
+    const k = `${r.platform}|${r.model}`;
+    const a = agg.get(k) || { platform: r.platform, model: r.model, usd: 0 };
+    a.usd += num(r.cost_usd);
+    agg.set(k, a);
+  }
+  return Array.from(agg.values()).sort((a, b) => b.usd - a.usd || (a.model < b.model ? -1 : a.model > b.model ? 1 : 0)).slice(0, n);
 }
 function modelColumns(models, prefix) {
   const dup = new Set();
@@ -482,11 +500,16 @@ function modelsAdoption(ctx) {
   const buckets = M.bucketList('week', ctx.from, ctx.to);
   const grid = new Map();
   if (models.length) {
-    for (const r of ctx.db.prepare(
-      `SELECT ${M.BUCKET_SQL.week('date')} AS b, platform, model, avg(active_users) AS au FROM rollup_model_day
-       WHERE dataset_id = ? AND date BETWEEN ? AND ? AND platform IN (${inList(Array.from(new Set(models.map((m) => m.platform))))}) AND model <> ''
-       GROUP BY b, platform, model`
-    ).all(ctx.datasetId, ctx.from, ctx.to)) grid.set(`${r.b}|${r.platform}|${r.model}`, r.au);
+    const acc = new Map();
+    for (const r of M.modelDays(ctx, { from: ctx.from, to: ctx.to, platforms: Array.from(new Set(models.map((m) => m.platform))) })) {
+      if (r.model === '') continue;
+      const k = `${M.bucketStart('week', r.date)}|${r.platform}|${r.model}`;
+      const a = acc.get(k) || { sum: 0, n: 0 };
+      a.sum += num(r.active_users);
+      a.n += 1;
+      acc.set(k, a);
+    }
+    for (const [k, a] of acc) grid.set(k, a.sum / a.n);
   }
   const rows = buckets.map((b) => {
     const o = { week: M.bucketLabel('week', b) };
@@ -504,12 +527,13 @@ function modelsAdoption(ctx) {
 function modelsByGroup(ctx, p) {
   const tids = ctx.platforms.filter((i) => platformsMod.byId(i).models);
   const col = p.dim;
+  const msw = M.scopeWhere(ctx, 'pe');
   const raw = tids.length ? ctx.db.prepare(
     `SELECT (pe.person_key IS NULL) AS un, pe.${col} AS v, u.platform, u.model, sum(u.cost_usd) AS usd
      FROM usage u LEFT JOIN people pe ON pe.dataset_id = u.dataset_id AND pe.person_key = u.person_key
-     WHERE u.dataset_id = ? AND u.date BETWEEN ? AND ? AND u.platform IN (${inList(tids)}) AND coalesce(u.model, '') <> ''
+     WHERE u.dataset_id = ? AND u.date BETWEEN ? AND ? AND u.platform IN (${inList(tids)}) AND coalesce(u.model, '') <> ''${msw.where}
      GROUP BY un, v, u.platform, u.model`
-  ).all(ctx.datasetId, ctx.from, ctx.to) : [];
+  ).all(ctx.datasetId, ctx.from, ctx.to, ...msw.params) : [];
   const byModel = new Map();
   for (const r of raw) {
     const k = `${r.platform}|${r.model}`;
@@ -672,12 +696,12 @@ function parseParams(def, q) {
   return p;
 }
 
-function run(id, query) {
+function run(id, query, scope, opts) {
   const def = catalog.get(id);
   if (!def) throw notFound('Report');
   const q = query || {};
   const p = parseParams(def, q);
-  const ctx = M.resolve(q);
+  const ctx = M.resolve(q, scope, opts);
   if (!def.params.includes('platform')) { ctx.platforms = platformsMod.IDS.slice(); ctx.allPlatforms = true; }
   const out = RUNNERS[id](ctx, p, q);
   const params = {};
@@ -686,10 +710,12 @@ function run(id, query) {
   if (def.params.includes('basis')) params.basis = ctx.basis;
   if (def.params.includes('dim')) params.dim = p.dim;
   if (def.params.includes('limit')) params.limit = p.limit;
-  return {
+  const res = {
     id: def.id, title: def.title, description: def.description, asOf: ctx.asOf, range: { from: ctx.from, to: ctx.to }, params,
     columns: out.columns || def.columns, rows: out.rows, totals: out.totals || null, chart: out.chart || null, notes: out.notes || [],
   };
+  if (out.note) res.note = out.note;
+  return res;
 }
 
 module.exports = { run, RUNNERS };

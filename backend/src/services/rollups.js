@@ -17,6 +17,8 @@ function ensureIndexes(db) {
     CREATE INDEX IF NOT EXISTS ix_rmd_ds_date ON rollup_model_day(dataset_id, date);
     CREATE INDEX IF NOT EXISTS ix_rpm_ds_month ON rollup_person_month(dataset_id, month, platform);
     CREATE INDEX IF NOT EXISTS ix_usage_ds_plat_model ON usage(dataset_id, platform, model, date);
+    CREATE INDEX IF NOT EXISTS idx_rpd_platform_date ON rollup_person_day(dataset_id, platform, date);
+    CREATE INDEX IF NOT EXISTS idx_people_lob ON people(dataset_id, lob_cg);
   `);
   indexed.add(db);
 }

@@ -8,6 +8,7 @@ const CATALOGUE = [
   { key: 'data.manage', label: 'Manage data', description: 'Verify, promote and roll back datasets, generate fixtures and pull from Power BI.' },
   { key: 'settings.manage', label: 'Change settings', description: 'Read and change settings such as seat rates and the LOB-CG map.' },
   { key: 'access.manage', label: 'Manage access', description: 'Users, roles, role assignments, the Active Directory connection and sign-in activity.' },
+  { key: 'data.all', label: 'All lines of business', description: 'See every line of business and the Unmatched and Unassigned buckets. Without it, a user sees only the LOB-CG values granted to them.' },
 ];
 
 const KEYS = CATALOGUE.map((p) => p.key);
@@ -20,12 +21,13 @@ const VERBS = {
   'data.manage': 'manage data',
   'settings.manage': 'change settings',
   'access.manage': 'manage access',
+  'data.all': 'see every line of business',
 };
 
 const SYSTEM_ROLES = [
   { name: 'Administrator', description: 'Every permission.', permissions: KEYS.slice() },
-  { name: 'Executive', description: 'Dashboards and CSV export, no person-level data.', permissions: ['dashboard.view', 'export.csv'] },
-  { name: 'Analyst', description: 'Dashboards, person-level usage and CSV export.', permissions: ['dashboard.view', 'people.view', 'export.csv'] },
+  { name: 'Executive', description: 'Dashboards and CSV export, no person-level data.', permissions: ['dashboard.view', 'export.csv', 'data.all'] },
+  { name: 'Analyst', description: 'Dashboards, person-level usage and CSV export.', permissions: ['dashboard.view', 'people.view', 'export.csv', 'data.all'] },
   { name: 'Viewer', description: 'Dashboards only.', permissions: ['dashboard.view'] },
 ];
 

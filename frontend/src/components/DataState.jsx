@@ -2,6 +2,7 @@ import React from 'react';
 import EmptyState from './ui/EmptyState.jsx';
 import Button from './ui/Button.jsx';
 import { SkeletonCard } from './ui/Skeleton.jsx';
+import NoScope, { isNoScope } from './NoScope.jsx';
 
 // Shared loading, error and inline-warning handling for a useQuery result.
 //   loading: skeleton after 150 ms (children render nothing until data exists)
@@ -13,6 +14,7 @@ export function Forbidden({ err }) {
 }
 
 export default function DataState({ q, skeleton, children }) {
+  if (isNoScope(q.error) && q.data === undefined) return <NoScope err={q.error} />;
   if (q.error && q.error.status === 403 && q.data === undefined) return <Forbidden err={q.error} />;
   if (q.error && q.data === undefined) {
     return <EmptyState tone="error" title="Could not load this view" body={q.error.message || 'The request failed.'} action={<Button variant="secondary" onClick={q.reload}>Retry</Button>} />;

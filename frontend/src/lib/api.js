@@ -19,6 +19,18 @@ function mockOut(v) {
   try { if (v === undefined) return localStorage.getItem(MOCK_OUT) === '1'; if (v) localStorage.setItem(MOCK_OUT, '1'); else localStorage.removeItem(MOCK_OUT); } catch { /* storage blocked */ }
   return false;
 }
+// Mock scope for exercising scoped views: localStorage aixp.mock.scope = "none" or "one".
+// "none" signs in without data.all and answers every data read 403 no_scope.
+function mockScopeMode() {
+  try { return localStorage.getItem('aixp.mock.scope') || ''; } catch { return ''; }
+}
+function mockScope(s) {
+  const mode = mockScopeMode();
+  if (!mode) return s;
+  const perms = (s.permissions || []).filter((k) => k !== 'data.all' && k !== 'access.manage' && k !== 'settings.manage' && k !== 'data.manage');
+  return { ...s, permissions: perms, scope: { all: false, lob_cg: mode === 'one' ? ['Capital Markets'] : [] } };
+}
+const NO_SCOPE_PATHS = /^(summary|trend|organization|users|models|platforms|reports|verification|datasets)(\/|$)/;
 async function mockFile(name) {
   const loader = mockFiles['../mock/' + name + '.json'];
   if (!loader) {
@@ -34,7 +46,7 @@ async function mockRequest(method, path, body) {
   const [bare, qs] = path.split('?');
   if (bare === '/auth/session') {
     const s = await mockFile('auth-session');
-    return mockOut() ? { authenticated: false, ad: s.ad } : s;
+    return mockOut() ? { authenticated: false, ad: s.ad } : mockScope(s);
   }
   if (bare === '/auth/login') {
     if (body && body.password === 'bad') {
@@ -44,13 +56,19 @@ async function mockRequest(method, path, body) {
       throw err;
     }
     mockOut(false);
-    return mockFile('auth-session');
+    return mockScope(await mockFile('auth-session'));
   }
   if (bare === '/auth/logout') { mockOut(true); return { ok: true }; }
   if (bare === '/health') return { ok: true, buildId: 'mock', mock: true };
   if (method === 'POST' && bare === '/access/directory/test') return mockFile('access-directory-test');
   if (method === 'POST' && bare === '/access/directory/sync') return { users: 2, updated: 2, deactivated: 0, errors: [] };
   if (method !== 'GET') return { ok: true, mock: true };
+  if (mockScopeMode() === 'none' && NO_SCOPE_PATHS.test(bare.replace(/^\/+/, ''))) {
+    const err = new Error('No data scope is assigned to your account. Ask an administrator to grant a line of business.');
+    err.status = 403;
+    err.body = { error: err.message, code: 'no_scope' };
+    throw err;
+  }
   const params = new URLSearchParams(qs || '');
   const name = mockName(bare, params);
   if (name === 'access-directory-search') {

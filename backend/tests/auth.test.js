@@ -14,6 +14,8 @@ const roleId = (name) => ctx.db.getDb().prepare('SELECT id FROM roles WHERE name
 
 async function mkUser(username, roleName, password) {
   const body = { username, display_name: username, password: password || PW, role_ids: roleName ? [roleId(roleName)] : [] };
+  // A Viewer has no data.all, so it needs a scope grant to see any figures (CONTRACT 15.1).
+  if (roleName === 'Viewer') body.lob_cg = [ctx.db.getDb().prepare("SELECT lob_cg AS v FROM people WHERE lob_cg NOT IN ('', 'Unassigned') LIMIT 1").get().v];
   const r = await admin.call('POST', '/api/access/users', body);
   assert.equal(r.status, 201, r.text);
   return r.json;
@@ -61,7 +63,7 @@ test('login: admin / M0nkside signs in, sets a hardened cookie, session body has
   assert.equal(body.authenticated, true);
   assert.equal(body.user.username, 'admin');
   assert.equal(body.user.default_password, 1);
-  assert.deepEqual(body.permissions.slice().sort(), ['access.manage', 'dashboard.view', 'data.manage', 'export.csv', 'people.view', 'settings.manage']);
+  assert.deepEqual(body.permissions.slice().sort(), ['access.manage', 'dashboard.view', 'data.all', 'data.manage', 'export.csv', 'people.view', 'settings.manage']);
   assert.deepEqual(body.roles.map((r) => r.name), ['Administrator']);
   assert.deepEqual(body.ad, { enabled: false, domain: '' });
   const secure = await rawLogin('admin', 'M0nkside', { 'x-forwarded-proto': 'https' });

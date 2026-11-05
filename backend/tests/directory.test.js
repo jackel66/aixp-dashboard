@@ -500,7 +500,7 @@ test('AD sign-in: a role assigned to a group DN, then a nested group, then the p
   const a4 = await assign('Executive', 'ad_group', `CN=Staff-All,OU=Groups,${BASE}`, null, 'Staff-All');
   ok = await adLogin('jdoe', 'jdoe-Pass-123');
   assert.equal(ok.status, 200, 'parent of the primary group');
-  assert.deepEqual(ok.json.permissions, ['dashboard.view', 'export.csv']);
+  assert.deepEqual(ok.json.permissions, ['dashboard.view', 'export.csv', 'data.all']);
   await admin.call('DELETE', `/api/access/roles/${roleId('Executive')}/assignments/${a4.id}`);
 
   // OU suffix, with a comma boundary: OU=Staff matches Engineering under Staff, not XStaff

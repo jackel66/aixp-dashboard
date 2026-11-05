@@ -7,6 +7,7 @@ import CountUp from '../components/CountUp.jsx';
 import FreshnessStrip from '../components/FreshnessStrip.jsx';
 import ConfidenceChip from '../components/ConfidenceChip.jsx';
 import PlatformCard from '../components/PlatformCard.jsx';
+import { useAuth } from '../lib/auth.jsx';
 import DataState from '../components/DataState.jsx';
 import { DeltaChip } from '../components/analytics/StatTile.jsx';
 import SegmentedControl from '../components/ui/SegmentedControl.jsx';
@@ -24,15 +25,18 @@ const DEFAULTS = { basis: 'consumption' };
 export default function LandingPage() {
   const { values, set } = useUrlFilters(DEFAULTS);
   const basis = values.basis;
+  const { scope } = useAuth();
+  const scoped = !scope.all;
   const summary = useQuery('/summary', { basis });
   const trend = useQuery('/trend', { grain: 'week', basis });
 
   return (
     <div className="page">
       <PageHeader
-        eyebrow="Executive view"
+        eyebrow={scoped ? 'Your lines of business' : 'Executive view'}
         title="AI platform economics"
         display
+        description={scoped ? 'Spend and consumption for the lines of business granted to you.' : undefined}
         right={(
           <>
             {summary.data && <AsOfChip asOf={summary.data.asOf} dataset={summary.data.dataset} />}
@@ -52,6 +56,7 @@ export default function LandingPage() {
                   <span className="t-display" title={moneyFull(cur)}><CountUp value={cur} format={money} /></span>
                   <DeltaChip change={pctChange(cur, prior)} label={'vs ' + s.headline.prior.period.label} />
                 </div>
+                {scoped && s.seat_basis_note ? <p className="t-small text-muted m-0" style={{ marginTop: 8 }}>{s.seat_basis_note}</p> : null}
                 <p className="text-muted m-0" style={{ marginTop: 8, maxWidth: 680 }}>
                   A directional figure in US dollars on the {basis} basis, compared with {s.headline.prior.period.label} ({money(prior)}).
                   It may not match invoices.

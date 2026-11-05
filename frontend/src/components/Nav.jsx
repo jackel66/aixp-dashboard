@@ -8,6 +8,7 @@ import Dialog from './ui/Dialog.jsx';
 import Button from './ui/Button.jsx';
 import Chip from './ui/Chip.jsx';
 import { useToast } from './ui/Toast.jsx';
+import Tooltip from './ui/Tooltip.jsx';
 import { Field } from './settings/shared.jsx';
 
 function ChangePasswordDialog({ onClose, onDone }) {
@@ -43,6 +44,22 @@ function ChangePasswordDialog({ onClose, onDone }) {
         <button type="submit" className="sr-only" tabIndex={-1}>Change password</button>
       </form>
     </Dialog>
+  );
+}
+
+// Neutral chip for a user who sees only some lines of business. Hidden for scope.all.
+function ScopeChip() {
+  const { scope, authenticated } = useAuth();
+  if (!authenticated || !scope || scope.all) return null;
+  const vals = scope.lob_cg || [];
+  const short = !vals.length ? 'none' : vals.length === 1 ? vals[0] : vals.length + ' LOBs';
+  const tip = !vals.length ? 'No data scope. Ask an administrator to grant a line of business.' : (vals.length === 1 ? 'Line of business: ' : 'Lines of business: ') + vals.join(', ');
+  return (
+    <Tooltip text={tip} side="bottom">
+      <span tabIndex={0} className="chip chip-outline" style={{ whiteSpace: 'nowrap', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} aria-label={'Data scope: ' + tip} data-testid="scope-chip">
+        <span className="hidden sm:inline">Scope: {short}</span><span className="sm:hidden">Scope</span>
+      </span>
+    </Tooltip>
   );
 }
 
@@ -112,6 +129,7 @@ export default function Nav() {
           </svg>
           <span className="t-small hidden lg:inline">Settings</span>
         </NavLink>}
+        <ScopeChip />
         <AccountMenu />
       </nav>
     </header>

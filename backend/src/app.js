@@ -74,7 +74,9 @@ function createApp() {
     if (err && err.type === 'entity.too.large') return res.status(400).json({ error: 'Request body is too large' });
     const status = err && err.status && err.status >= 400 && err.status < 600 ? err.status : 500;
     if (status === 500) console.error(`[error] ${req.method} ${req.originalUrl}: ${err && err.stack ? err.stack : err}`);
-    return res.status(status).json({ error: (err && err.message) || 'Internal error' });
+    const body = { error: (err && err.message) || 'Internal error' };
+    if (status < 500 && err && typeof err.code === 'string' && err instanceof HttpError) body.code = err.code;
+    return res.status(status).json(body);
   });
   return app;
 }
