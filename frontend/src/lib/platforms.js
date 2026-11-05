@@ -3,7 +3,8 @@ export const PLATFORMS = [
   { id: 'anthropic', name: 'Anthropic', unit: 'tokens', models: true },
   { id: 'openai', name: 'OpenAI', unit: 'tokens', models: true },
   { id: 'github', name: 'GitHub Copilot', unit: 'credits', models: false },
-  { id: 'cowork', name: 'Copilot Cowork', unit: 'credits', models: false }
+  { id: 'cowork', name: 'Copilot Cowork', unit: 'credits', models: false },
+  { id: 'bedrock', name: 'AWS Bedrock', unit: 'tokens', models: true }
 ];
 export const PLATFORM_IDS = PLATFORMS.map((p) => p.id);
 export const BY_ID = Object.fromEntries(PLATFORMS.map((p) => [p.id, p]));

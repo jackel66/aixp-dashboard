@@ -10,6 +10,7 @@ const PLATFORMS = [
   { id: 'openai', name: 'OpenAI', unit: 'tokens', models: true, aliases: ['openai', 'chatgpt'] },
   { id: 'github', name: 'GitHub Copilot', unit: 'credits', models: false, aliases: ['github', 'github copilot', 'copilot'] },
   { id: 'cowork', name: 'Copilot Cowork', unit: 'credits', models: false, aliases: ['cowork', 'copilot cowork'] },
+  { id: 'bedrock', name: 'AWS Bedrock', unit: 'tokens', models: true, aliases: ['bedrock', 'aws bedrock', 'amazon bedrock'] },
 ];
 
 const IDS = PLATFORMS.map((p) => p.id);

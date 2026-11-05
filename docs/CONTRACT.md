@@ -1759,3 +1759,178 @@ test() steps with and without the delegated token.
   the ASCII scan are green; screenshots light and dark of the Help rail (built and planned
   entries), the generic connector cards for all four connectors, and the Cowork device
   code panel (mocked).
+
+## 19. AWS Bedrock as a fifth platform with a direct connector (addendum 2026-11-05, builders V platform plumbing, W connector)
+
+Purpose (Doug): "add aws bedrock so we can pull the same data types for that platform as
+well". Bedrock becomes the fifth platform everywhere the four exist, and a connector
+pulls per user, per model, per day tokens and dollars straight from AWS. Research with
+every field and UNVERIFIED label is in
+C:\Users\Dougl\.claude\skills\aixp-vendor-pull-plan\references\bedrock.md; W reads it
+before writing the client. Facts that bind the design: per-user tokens exist only in
+model invocation logs (CloudWatch Logs, record fields identity.arn, modelId,
+input.inputTokenCount, output.outputTokenCount, timestamp) and only from the day logging
+was switched on; per-user dollars are not native, so dollars come from Cost Explorer per
+usage type per day and are allocated across users by token share (the OpenAI rule in
+18.4); CloudWatch AWS/Bedrock metrics give per-model tokens by ModelId with no user and
+are the fallback when no log group is configured.
+
+### 19.1 Platform entry (done by Fable in the same commit as this section)
+
+backend/src/platforms.js and frontend/src/lib/platforms.js gain
+{ id: 'bedrock', name: 'AWS Bedrock', unit: 'tokens', models: true, aliases: ['bedrock',
+'aws bedrock', 'amazon bedrock'] } after cowork. CSS tokens --p-bedrock and
+--p-bedrock-soft (plus the --color-p-* mirrors) in index.css, light #8a5cd6, dark
+#a07fe3. Platform order everywhere stays registry order, so Bedrock is last.
+
+### 19.2 Platform plumbing (owner V)
+
+- Fixture (services/fixture.js): Bedrock is a token platform like Anthropic and OpenAI
+  with models anthropic.claude-sonnet-4-5, anthropic.claude-haiku-4-5, amazon.nova-pro-v1
+  and meta.llama3-3-70b-instruct, about 8 percent of total spend, cost per token inside
+  the unit_sanity band, requests populated, credits blank; people adoption around 25
+  percent of the roster. Every existing defect flag keeps its meaning; no new flag. The
+  clean profile still passes every check and the defective profile fails exactly the
+  checks it failed before (the verify suite proves it).
+- Seat rates: Bedrock has no seats. seat_rate rows are never generated for it and the
+  seat basis treats a platform without seat rows as zero seat spend (confirm the
+  existing code already does this; fix only if it throws or divides by zero).
+- Frontend: every page that lists platforms reads PLATFORMS and needs no change; V
+  verifies Landing, Overview, Platform page (switcher and the empty-state copy "Pick one
+  of the four platforms above" becomes "Pick one of the platforms above"), Organization
+  matrix columns, Models platform chips, Users platform filter, Data quality grouping,
+  Reports platform controls and the Nav platform list all show Bedrock. Mocks under
+  frontend/src/mock gain Bedrock entries wherever a platform list or per-platform map
+  exists, so smoke-shapes reports no missing keys.
+- Tests: any pin on four platforms moves to five; backend/scripts/smoke-shapes.js admin
+  and SMOKE_SCOPED passes stay green; the fixture regenerates on a throwaway db and
+  /api/summary shows five platforms with Bedrock spend above zero.
+
+### 19.3 Bedrock connector (connectors/bedrock.js + awsClient.js, owner W; id 'bedrock', platform 'bedrock')
+
+Settings (defaults.js, settings.js validators, SECRET_KEYS): bedrock.enabled false;
+bedrock.access_key_id '' (text); bedrock.secret_access_key SECRET; bedrock.session_token
+SECRET (optional, for pasted session keys); bedrock.role_arn '' (text, optional: when
+set, AssumeRole from the key credentials, session name aixp-dashboard); bedrock.region
+'us-east-1' (text, the Region of the log group and metrics); bedrock.log_group ''
+(text, the CloudWatch Logs group that model invocation logging writes to; blank means
+no per-user data and the metrics fallback is used); bedrock.identity_rule select
+'session' | 'metadata' default 'session'; bedrock.metadata_user_key 'user' (text,
+advanced); bedrock.cost_services 'Amazon Bedrock' (textarea, advanced, one Cost
+Explorer SERVICE name per line; the report says Marketplace-billed models may sit under
+other service lines); bedrock.rebuild_days 3 (number 1..31, advanced);
+bedrock.history_floor '' (text YYYY-MM-DD, advanced: the day invocation logging was
+switched on; blank lets months_back decide); bedrock.endpoint_logs, bedrock.endpoint_ce,
+bedrock.endpoint_cloudwatch, bedrock.endpoint_sts, bedrock.endpoint_bedrock '' (advanced
+text, custom endpoints for tests and proxies; blank = AWS). describe() lists them in
+that order with hints; help sentences: who creates the IAM user or role, that logging
+must be on and where, and that dollars are allocated by token share.
+
+Dependencies (backend/package.json, pure JS, no install scripts): @aws-sdk/client-cloudwatch-logs,
+@aws-sdk/client-cost-explorer, @aws-sdk/client-cloudwatch, @aws-sdk/client-sts,
+@aws-sdk/client-bedrock, @aws-sdk/credential-providers. awsClient.js builds the five
+clients from the settings (static credentials, optional AssumeRole through
+fromTemporaryCredentials, region, endpoint override) and wraps every call with the
+retry rule: ThrottlingException and 5xx retry three times with backoff, anything else
+stops with the AWS error name and message. Credentials never appear in logs or test
+details.
+
+Per-user tokens (Logs Insights, when bedrock.log_group is set): one StartQuery per
+7-day chunk of the window on the log group, queryString
+  fields @timestamp | stats sum(input.inputTokenCount) as input_tokens,
+  sum(output.outputTokenCount) as output_tokens, count(*) as requests
+  by bin(1d) as day, identity.arn as arn, modelId as model
+  | limit 100000
+(when identity_rule is 'metadata' the group key is requestMetadata.<key> as who
+instead of identity.arn). Poll GetQueryResults every 1 s until status Complete (Failed,
+Cancelled or Timeout stop with the status), page with the continuation token, cap 90 s
+per query. A chunk that returns 100000 rows is re-run per day and noted in the pull
+log. Person key rule 'session': arn arn:aws:sts::<acct>:assumed-role/<role>/<session>
+gives role = <role> and who = <session>; arn:aws:iam::<acct>:user/<name> gives role ''
+and who = <name>; anything else gives who = the last path segment. who lowercased and
+trimmed is the PersonKey; if it contains '@' it is also the email; otherwise
+vendorImport resolves it through activeCopy.emailToPersonKey().byLogin (user id, then
+email local part) exactly like a GitHub login. Rule 'metadata': who = the metadata
+value; empty who lands on 'bedrock:unattributed'. Model = modelId with any ARN prefix
+removed (last path segment) and a leading cross-Region prefix (us., eu., apac., global.)
+stripped; the raw modelId is kept in the detail rows. Tokens = input_tokens +
+output_tokens, Requests = requests, Date = the UTC day, ConsumptionUnit 'tokens'.
+
+Dollars (Cost Explorer): GetCostAndUsage DAILY, Metrics UnblendedCost, Filter SERVICE in
+bedrock.cost_services, GroupBy USAGE_TYPE, every NextPageToken followed (cap 50 pages),
+always the us-east-1 CE endpoint. A usage type is parsed as {region}-{model}-{rest}
+where model is the segment between the first dash and the first token-type word
+(input, output, cache, tokens, token, count, standard, priority, flex, cross, region,
+global, mantle); the model key is lowercased with non-alphanumerics removed. A log
+modelId gets the same key treatment after stripping the vendor prefix (anthropic.,
+amazon., meta., mistral., cohere., openai.) and the trailing version (-v1:0 etc.). Match
+= the alphabetic family words (claude, sonnet, haiku, opus, nova, llama, titan,
+mistral, mixtral, command, gptoss, deepseek, micro, lite, pro, premier) agree as a set
+AND the digit strings agree after removing punctuation (so Claude4.6Sonnet matches
+claude-sonnet-4-6); W writes modelKeyMatch(usageType, modelId) as a pure exported
+function with a table test of at least eight pairs. Per day and matched model, the CE
+dollars are allocated across that day's users by token share (cost_source
+'allocated'); a day with dollars and no log rows for that model, or a usage type that
+matches no model, lands on PersonKey 'bedrock:unattributed' with Model = the CE model
+segment (cost_source 'vendor'). Every usage type row is kept in vendor_usage_detail
+with its dollars and the model it mapped to (or none).
+
+Metrics fallback (no log group): ListMetrics Namespace AWS/Bedrock MetricName
+InputTokenCount to enumerate ModelId values, then GetMetricData with period 86400 for
+InputTokenCount, OutputTokenCount and Invocations per ModelId over the window; rows
+land on PersonKey 'bedrock:unattributed' per model and day with Tokens and Requests;
+dollars attach by the same model match. The pull log says the connector ran without
+per-user data.
+
+Orgs: the role name from the ARN (rule 'session') is the vendor org value with its
+members; a blank role gives no org row. coverage = {ce_total_usd, allocated_usd,
+unattributed_usd, log_rows, earliest_log_day}. describe(): limits (Logs Insights 10
+StartQuery a second, 100000 rows a query; CE 14 months), lag ("Logs arrive within
+minutes; Cost Explorer figures can take 24 hours and are pulled again for rebuild_days
+days"), history_floor from the setting, window_align none.
+
+test(): credentials (STS GetCallerIdentity, detail = the caller ARN with the account id
+masked to the last four digits), logging (bedrock GetModelInvocationLoggingConfiguration:
+on or off, destination, and whether its log group matches the setting; a denied call
+reports the error and the step is not ok), log_group (DescribeLogGroups finds it, plus
+the earliest event time from a stats min(@timestamp) query, which is the real history
+floor), query (one-day stats query: row count and the SHAPE of one arn with the account
+and session masked, so the fix loop can see whether the session name is a person),
+costs (one day of CE: usage types seen and the matched model count), metrics (ListMetrics
+ModelId count). 200 even on failure; the first failed step carries the AWS error name
+and message.
+
+Fake servers in tests/connectors.bedrock.test.js: the SDK clients point at express apps
+on port 0 through the endpoint settings. Logs and CE use the JSON protocol (dispatch on
+the X-Amz-Target header: Logs_20140328.StartQuery, GetQueryResults, DescribeLogGroups;
+AWSInsightsIndexService.GetCostAndUsage); STS and CloudWatch use the query protocol with
+XML answers (GetCallerIdentity, ListMetrics, GetMetricData), kept minimal. Serve data
+built from the fixture people so PersonKey resolution for an email session name and for
+a login session name can both be asserted. Tests assert: the 7-day chunking and the
+per-day re-run after a capped chunk, the continuation token, allocation sums equal to the
+CE dollars, the unattributed rows, modelKeyMatch pairs, the metrics fallback when
+log_group is blank, test() steps, ThrottlingException retry, end to end pull through
+vendorImport with carry-over of the other platforms.
+
+### 19.4 Shared
+
+- Registry: connectors/index.js adds load('./bedrock') last.
+- integrationHelp.js gains a 'bedrock' entry, status built, kind vendor, written by W
+  from the report: URLs (logs.<region>.amazonaws.com, ce.us-east-1.amazonaws.com,
+  monitoring.<region>.amazonaws.com, sts.amazonaws.com, bedrock.<region>.amazonaws.com),
+  ports (443 outbound), credentials (IAM user access key or role to assume), permissions
+  (logs:StartQuery, logs:GetQueryResults, logs:StopQuery, logs:DescribeLogGroups,
+  ce:GetCostAndUsage, cloudwatch:ListMetrics, cloudwatch:GetMetricData,
+  sts:GetCallerIdentity, sts:AssumeRole when a role is used,
+  bedrock:GetModelInvocationLoggingConfiguration), limits, where (the connector card and
+  the Bedrock console for logging), notes (logs start at enablement; bedrock-mantle
+  Responses and Chat Completions are not logged; per-user dollars are an allocation).
+  help.test.js keeps passing.
+- The Requirements fold is gone from the Power BI card and the connector cards (Doug,
+  2026-11-05: duplicative with the Help page); each card carries one line linking to
+  its Help tab instead. The Active Directory section keeps its fold.
+- Definition of done: full suite green, smoke admin and scoped green, frontend build,
+  ASCII scan, the vendorflow script extended with the bedrock connector against the
+  real AWS endpoints with bogus keys (STS must answer with its own error text in the
+  checklist, the pull must fail cleanly), screenshots of the Bedrock tab on the data
+  source page and the Bedrock platform page on the fixture.
