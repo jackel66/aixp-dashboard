@@ -3,7 +3,7 @@
 Client: Capital Group (CG)
 Provider: Trace3, Financial Services Group
 Prepared by: Doug Austin, Principal Solutions Architect
-Version: 0.2 draft, 5 November 2026
+Version: 0.3 draft, 5 November 2026
 Status: for review. Fees, payment terms and the engagement model are set out in the accompanying Trace3 order form, not in this document.
 
 ## 1. Background
@@ -111,20 +111,39 @@ Administrator and SME walkthroughs, the maintained documentation set (design con
 | Install, configure and verify the production instance | Operate the application after handover |
 | Hold the walkthroughs; support during the defined window | Attend walkthroughs; own the application afterwards |
 
-## 8. Approach and timeline
+## 8. Approach, timeline and effort
 
-Durations are Trace3 estimates, not commitments, and assume the dependencies in section 6 are met. Phases 2 and 3 overlap with phase 1 once a platform's discovery is complete; phase 4 starts per platform as its credentials arrive.
+The target is two months from kick-off to handover. Three months is the outer bound. The gap between the two is almost entirely work outside this team's direct control: credential and permission requests through Capital Group's internal teams, server provisioning, firewall and proxy changes, and the APEX integration path, which is unknown until discovery. The plan below is written conservatively for that reason: the hours carry a range, the schedule shows the eight-week plan and what pushes it to twelve, and reconciliation is scoped to the closed month the data allows rather than a fixed calendar month.
 
-| Phase | Work | Estimated duration | Milestone |
-|---|---|---|---|
-| 1 | Discovery, all platforms and cross-platform tracks | 3 to 4 weeks | Discovery report accepted |
-| 2 | Access and environment | 2 to 6 weeks, driven by CG internal lead times | Credentials received; server and network path proven |
-| 3 | Design and development | 4 to 6 weeks | Design agreed; production instance installed |
-| 4 | Data gathering remediation | 1 to 2 weeks per platform, overlapping | Every platform pulling real data |
-| 5 | Metrics and cost reconciliation | One reporting month plus one week | Reconciliation report signed off |
-| 6 | Handover and support | 1 week, then the support window | Handover complete |
+### 8.1 Effort estimate by phase
 
-Elapsed time from kick-off to handover is about four to five months if access requests move at a typical corporate pace; phase 2 lead times are the main variable.
+Hours are Trace3 effort estimates for planning and staffing. They are not fees; fees and the engagement model are in the order form. The low figure assumes access arrives on time and the platforms behave as documented. The high figure allows for a fix loop on every platform, an APEX path that needs bespoke work, and two rounds of design review with business leaders. Plan at the high figure.
+
+| Phase | Work | Low hours | High hours | Main driver of the range |
+|---|---|---|---|---|
+| 1 | Discovery: six platform tracks, identity, showback and environment workshops, report, integration matrix, access requests, environment specification | 80 | 120 | APEX unknowns; number of owners to meet |
+| 2 | Access and environment: request writing, follow-up with internal teams, server specification, proxy and certificate work, security review inputs, verification of each path | 40 | 80 | CG lead times and rework on requests |
+| 3 | Design and development: showback design with leaders, showback views, APEX connector, adaptation of the five vendor connectors, live statistics, cost model and labelling, organisation correlation, security hardening, proxy and certificate support, installation and runbook | 240 | 320 | APEX connector; design review rounds |
+| 4 | Data gathering remediation: fix loop per platform with its owner, identity resolution, gap closure, unmatched usage reduction | 70 | 120 | Response shapes that differ from documentation |
+| 5 | Metrics and cost reconciliation: per platform closed day and month, billing comparison, Power BI comparison, rate confirmation, restricted-consumer tests, report | 90 | 130 | Billing statement availability; differences to explain |
+| 6 | Handover and support: walkthroughs, document set, support window | 40 | 60 | Length of the support window |
+| All | Governance: weekly status, point-of-contact time, change control, issue tracking | 30 | 50 | Engagement length |
+| | Total | 590 | 880 | |
+
+### 8.2 Schedule
+
+Durations are Trace3 estimates, not commitments, and assume the dependencies in section 6 are met. Phases overlap: access requests go out as each platform's discovery closes, build starts in week 3 on the platforms already understood, and remediation starts per platform the day its credentials arrive.
+
+| Week | Eight-week plan | What pushes it toward twelve weeks |
+|---|---|---|
+| 1 to 3 | Discovery for all platforms; access requests issued from week 2; server, network and firewall requests issued by end of week 2 | APEX owner or data not identified; platform owners unavailable |
+| 2 to 5 | Access and environment: credentials, server, proxy, certificate, firewall rules landed; each path proven by the connection tests | Internal approval cycles longer than three weeks; security review of the application required before access is granted |
+| 3 to 6 | Design with business leaders (weeks 3 to 4); build and hardening; production install by end of week 6 | Second design review round; APEX needs a database or export path rather than an API |
+| 5 to 7 | Remediation per platform as credentials arrive; all platforms pulling real data by end of week 7 | Credentials arriving after week 5 push that platform's remediation and reconciliation out one for one |
+| 6 to 8 | Reconciliation of the most recent closed day and closed month per platform against the platform's reporting and billing; Power BI comparison; access tests; report and sign-off | A full calendar month run in parallel needs every connector live before that month starts, which the eight-week plan cannot promise; the twelve-week plan reconciles one full calendar month |
+| 8 | Handover walkthroughs; support window starts | |
+
+The one item the team controls that decides the outcome is issuing complete, correct access and environment requests in weeks 1 and 2. Everything after that is paced by Capital Group's internal lead times, so the weekly status note tracks each request from issue to grant as its own line.
 
 ## 9. Acceptance
 
