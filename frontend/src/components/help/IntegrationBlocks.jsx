@@ -9,7 +9,7 @@ import { SkeletonCard } from '../ui/Skeleton.jsx';
 // Plain ASCII rendering of one entry, for a firewall or access request email.
 export function entryToText(e) {
   const out = [];
-  out.push(e.name + ' (' + (e.status === 'built' ? 'built' : 'planned') + ', ' + e.kind + ')');
+  out.push(e.name + ' (' + e.kind + ')');
   out.push(e.summary);
   const list = (title, items) => { if (items && items.length) { out.push('', title + ':'); items.forEach((x) => out.push('- ' + x)); } };
   if (e.urls && e.urls.length) { out.push('', 'Addresses:'); e.urls.forEach((u) => out.push('- ' + u.label + ': ' + u.value)); }
