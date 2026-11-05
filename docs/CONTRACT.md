@@ -949,3 +949,275 @@ the app (local first, then AD; no_role; ad_unreachable keeps local login working
   and seeing only what the role allows; AD test against a real domain is NOT possible
   here (no DC reachable), so the fake-client suite and the error mapping are the proof
   and the first real Save and test is the fix loop.
+
+## 15. Data scopes: line-of-business separation (addendum 2026-11-04, builders K backend and L frontend)
+
+Purpose (Doug, 2026-11-04, from the customer): an administrator can designate a person,
+such as a LOB manager, who sees only their own line of business and the users in it;
+separation between LOB owners is strict (a manager never sees another LOB's figures, names
+or rows, not even in a total); people like the COO see everything; the delegation is per
+person, either a local user or an AD group (or OU), the same three principal kinds the
+roles use.
+
+Design in one paragraph: roles stay what they are (what you may DO). A new permission
+data.all means "see every line of business". A user without data.all sees only the LOB-CG
+values granted to them through scope grants, which are attached to a local user, an AD
+group or an AD OU exactly like role assignments. The effective scope is the union of every
+grant that reaches the user. A user with neither data.all nor a grant has an empty scope:
+they can sign in and use whatever settings they are allowed, and every data route answers
+403 code no_scope. Enforcement is central and fails closed: every data query receives the
+caller's scope through one context object, and a service entered without a scope throws.
+
+### 15.1 Permission and system roles (permissions.js, owner K)
+
+Catalogue gains a seventh key, last in KEYS order:
+
+| key | grants |
+|---|---|
+| data.all | every line of business; without it the caller sees only the LOB-CG values granted to them under Settings > Data scopes |
+
+Label "All lines of business", description "See every line of business and the Unmatched
+and Unassigned buckets. Without it, a user sees only the LOB-CG values granted to them."
+System roles: Administrator (every key, now 7), Executive (dashboard.view, export.csv,
+data.all), Analyst (dashboard.view, people.view, export.csv, data.all), Viewer
+(dashboard.view only; a Viewer therefore needs a scope grant to see anything).
+ensureSystemRoles already rewrites the system rows at boot, so existing installs pick the
+new key up on restart. Custom roles created before this round do not get data.all; their
+users become scoped (empty scope until granted) and the release note says so. The Roles
+section shows data.all with its description like any other key.
+
+### 15.2 Schema (db.js, owner K; CREATE TABLE IF NOT EXISTS; index statements beside it)
+
+scope_grants: id INTEGER PRIMARY KEY, subject_type TEXT NOT NULL ('user' | 'ad_group' |
+'ad_ou'), user_id INTEGER NOT NULL DEFAULT 0, ad_dn TEXT NOT NULL DEFAULT '', ad_sid TEXT,
+ad_name TEXT, dim TEXT NOT NULL DEFAULT 'lob_cg', value TEXT NOT NULL, created_at TEXT NOT
+NULL, created_by INTEGER, UNIQUE(subject_type, user_id, ad_dn, dim, value). dim is always
+'lob_cg' in this round; the column exists so region and SBL grants can be added later
+without a migration, and the validator rejects anything else with 400 "Only LOB-CG scopes
+are supported". value is the stored people.lob_cg string, compared exactly as stored
+(trimmed on input). The literal value 'Unassigned' is grantable and means the people whose
+lob_cg is in UNASSIGNED_VALUES (reports.js:414). A grant whose value no longer appears in
+the active dataset is kept and shown as "not in current data".
+
+Indexes added by rollups.ensureIndexes (so they exist after every promote):
+idx_rpd_platform_date ON rollup_person_day(dataset_id, platform, date) and
+idx_people_lob ON people(dataset_id, lob_cg).
+
+auth_events kinds gain scope_added and scope_removed (detail names the subject and the
+values, never a secret).
+
+### 15.3 Effective scope (authService.js, auth.js, owner K)
+
+authService.effective(user) returns {permissions, roles, scope}. scope = {all: boolean,
+lob_cg: string[], via: {<value>: ['direct' | 'group:<name>' | 'ou:<name>', ...]}}. all is
+true when the effective permissions include data.all; then lob_cg is [] and via {}. Else
+lob_cg is the sorted, deduplicated union of scope_grants rows reaching the user by the
+SAME matching rules as role assignments (14.3 step 5: direct by user_id; ad_group by DN or
+SID in ad_groups_json, AD users only; ad_ou by DN suffix at a comma boundary, AD users
+only). Local users only get direct grants. Load scope_grants in one query beside the
+role_assignments query; do not introduce a second code path for the matching, extract the
+matcher into one function used by both.
+
+auth.js gate sets req.auth = {user, hash, permissions, roles, scope}. GET /api/auth/session
+and the login body gain scope: {all, lob_cg} (via omitted). Nothing else about sign-in
+changes; an empty scope does not refuse sign-in.
+
+### 15.4 Enforcement (services/scope.js, measures.js, reports.js, reportRunner.js, csvExport.js, routes, owner K)
+
+The rule for every service: a data function takes ctx from measures.resolve(query, scope)
+and scope is REQUIRED. measures.resolve throws new Error('scope missing') when the second
+argument is undefined, and the global error middleware answers 500 for that, so an entry
+point that forgets the scope fails loudly in tests rather than leaking. Every route handler
+passes req.auth.scope. Internal callers (reportRunner.orgCall, modelsCost calling
+reports.models, csvExport paths, anything else that calls a reports.* function) pass the
+ctx scope through. grep for "measures.resolve(" and "reports\.[a-z]+\(" at the end and
+account for every call.
+
+services/scope.js exports:
+- isEmpty(scope): !scope.all && scope.lob_cg.length === 0.
+- peopleWhere(scope, alias = 'p'): {sql, params}. all: sql '' (no restriction). Scoped:
+  "(<alias>.lob_cg IN (?, ...))" where a granted 'Unassigned' expands to
+  "(<alias>.lob_cg IS NULL OR lower(trim(<alias>.lob_cg)) IN ('', 'unassigned', 'unknown'))"
+  OR-ed in. The fragment is always appended with AND inside an existing WHERE.
+- lobVisible(scope, value): boolean used for the organization keys and cell checks.
+- assertNotEmpty(scope): throws an HttpError 403 {error: "No data scope is assigned to your
+  account. Ask an administrator to grant a line of business.", code: "no_scope"}; called by
+  measures.resolve for scoped callers with no values, so every data route answers it.
+
+Query rules, applied in reports.js, measures.js and reportRunner.js:
+1. rollup_person_day, rollup_person_month, usage and people reads: INNER JOIN people p
+   (dataset_id, person_key) when the scope is not all, with peopleWhere in the WHERE. An
+   unmatched usage key has no people row, so it drops out of every scoped read; that is the
+   intended rule (Unmatched usage belongs to nobody's LOB).
+2. rollup_platform_day and rollup_model_day are whole-estate tables. When scope.all they
+   are read as today (no change in cost or shape). When scoped, two helpers in measures.js
+   replace every direct read: platformDays(ctx) returns rows {date, platform, rows, cost_usd,
+   tokens, credits, consumption, requests, active_users, matched_cost_usd,
+   unmatched_cost_usd} computed from rollup_person_day JOIN people with the scope filter
+   (active_users = COUNT(DISTINCT person_key) with the ACT predicate; matched_cost_usd =
+   cost_usd; unmatched_cost_usd = 0), and modelDays(ctx) returns {date, platform, model,
+   rows, cost_usd, tokens, credits, consumption, requests, active_users} from usage JOIN
+   people with the scope filter. The callers (summary, trend, models, modelRows,
+   platformReport, modelDetail, spendWindow, consumptionByPlatform, platformDates,
+   rowCounts, topModels, modelsAdoption, costsPerUser and the rest) switch to the helpers
+   for BOTH modes so there is one code path; the helpers themselves branch on scope.all
+   and read the rollup table in the all case so the fast path keeps its cost.
+3. active users anywhere (measures.activeUsers, trend buckets, platformReport, summary,
+   report runners) are counted from rollup_person_day with the scope filter.
+4. Seat spend for a scoped caller is ALLOCATED, never whole-estate: for each platform and
+   month, seat_usd_in_scope = seat_usd(platform, month) x (active matched people in the
+   scope's LOBs that month / active matched people that month), from rollup_org_month
+   matched = 1 (the existing share rule at reports.js:504-533), 0 when the denominator is
+   0. loadSeat(ctx) applies this when scoped and the summary and platform payloads carry
+   seat_basis_note "Seat spend allocated to your lines of business by active people" so
+   the UI can print it. The seat basis 'licensed' and 'active' choices keep their meaning
+   for the whole-estate figure before allocation.
+5. organization(ctx): rows are only the keys visible to the scope. For dim lob_cg that is
+   the granted values (plus Unassigned when granted); for region, sbl and person_type the
+   rows are whatever the scoped people produce. The __unmatched__ row is pre-seeded only
+   when scope.all; the __unassigned__ row only when scope.all or 'Unassigned' is granted.
+   The response carries scope: {all, lob_cg} so the page can label itself.
+6. orgCell(ctx, dim, key, platform): a key the scope cannot see (dim lob_cg with a value
+   outside the grants, __unmatched__ when scoped, __unassigned__ without the grant) answers
+   403 {error: "That group is outside your data scope.", code: "out_of_scope"}. For other
+   dims the cell is computed over the scoped people only. contributors (names) are
+   returned only when the caller has people.view; otherwise contributors: [] and
+   contributors_hidden: true.
+7. userDetail(ctx, key): a person outside the scope answers 404 {error: "No such user"} (do
+   not reveal existence). users(ctx): the lob_cg filter from the URL is intersected with
+   the scope (a value outside it yields zero rows, not an error).
+8. platformReport and modelDetail: top_users only with people.view (else top_users: [],
+   top_users_hidden: true), and always scoped. The platform CSV (csvExport.js:65) writes
+   the top users block only with people.view. The GitHub gross/discount/net block from raw
+   usage is scoped too.
+9. Verification: GET /api/verification (summary, no evidence) stays dashboard.view. GET
+   /api/verification/runs/:runId and /runs/:runId/checks/:checkId need data.all (auth.js
+   rule, 403 required 'data.all'), because evidence rows carry person keys from every LOB.
+10. Reports: every runner receives ctx with scope; users_* runners join people with the
+    filter; users_unmatched answers {rows: [], note: "Unmatched usage is only visible with
+    the data.all permission"} when scoped; models_by_group and any runner reading raw usage
+    apply peopleWhere; group runners (users_by_group, costs_by_group, costs_movers) come out
+    of organization(ctx) and inherit rule 5. reportRunner.run passes scope into parseParams
+    or ctx; the catalogue is unchanged.
+11. datasets, fixtures, powerbi, settings, access routes: unchanged (they are not data
+    reads of the estate). GET /api/datasets/:id counts stay whole-estate (metadata).
+12. The SSE stream is unchanged. Promote and the LOB-CG map rewrite do not touch
+    scope_grants; a changed value simply stops matching, visible as "not in current data".
+
+auth.js RULES gains, before the default rule: GET /verification/runs... -> data.all.
+
+Performance: the scoped platformDays over a 90 day window on the default fixture (400
+people) must stay under the 200 ms smoke budget; the two indexes in 15.2 are for that.
+scripts/smoke-shapes.js gains a second pass signed in as a scoped user (env SMOKE_SCOPED=1
+creates a role "Scoped smoke" with dashboard.view, people.view, export.csv, a user
+scoped.smoke with a grant for the first lob_cg value of the active dataset, runs every
+route again, checks the budget, and asserts no row in any response carries a person_key or
+lob_cg outside the grant; the user and role are deleted afterwards).
+
+### 15.5 Access routes (routes/access.js, owner K; access.manage)
+
+| Method | Path | Body / notes |
+|---|---|---|
+| GET | /api/access/scope-values | {values: [{dim: 'lob_cg', value, sort, people, in_active_dataset: true}]} = DISTINCT people.lob_cg of the active dataset with people counts, sorted by lob_cg_sort then name, plus {value: 'Unassigned', sort: 998} always present; values that exist only in grants are appended with in_active_dataset false |
+| GET | /api/access/scopes | {rows: [{id, subject_type, user: {id, username, display_name, source} or null, ad_dn, ad_sid, ad_name, dim, value, in_active_dataset, created_at}]} sorted by subject then value |
+| POST | /api/access/scopes | {subject_type: 'user', user_id} or {subject_type: 'ad_group' or 'ad_ou', ad_dn, ad_sid, ad_name}, plus dim 'lob_cg' and values: [string, ...] (1..200, each 1..200 chars, trimmed); inserts one row per value, skips values already granted to that subject, answers {rows: the subject's grants after}; ad_* subjects need ad.enabled (400 otherwise, same text as role assignments); user_id must exist |
+| DELETE | /api/access/scopes/:id | |
+| GET | /api/access/users | each row gains scope: {all, lob_cg: [{value, via}]} (via as in roles) |
+| PUT | /api/access/users/:id | gains optional lob_cg: [values] which REPLACES the user's DIRECT grants (group and OU grants untouched), like role_ids |
+
+Every mutation writes auth_events (scope_added / scope_removed, actor_user_id) and
+broadcasts access.changed {what: 'scopes'}. docs/API.md gains these rows, the data.all key,
+the scope field on the session body, the no_scope and out_of_scope errors, and the
+data.all gate on verification evidence.
+
+### 15.6 Frontend (owner L)
+
+- lib/auth.jsx: state gains scope {all, lob_cg}; useAuth() exposes scope and
+  scopeLabel() ("All lines of business" | "1 line of business: X" | "3 lines of business:
+  A, B, C" | "No data scope"). Sign-in, sign-out and any access.changed SSE event clear
+  the query cache (a grant change must not leave another scope's figures cached).
+- Nav: a ScopeChip left of the account menu for signed-in users without scope.all: a
+  neutral chip "Scope: X" (or "Scope: 3 LOBs" with a Tooltip listing them); hidden when
+  scope.all. Mobile widths keep it on one line or drop the values and keep "Scope".
+- Every data page: when the main query answers 403 code no_scope, render EmptyState
+  "No data scope is assigned to your account" with the server's error text and the line
+  "Ask an administrator to grant a line of business under Settings > Data scopes."
+  (one shared component components/NoScope.jsx; pages already handle 403 with EmptyState,
+  extend that path). The landing page's headline figure and the overview tiles say
+  "Your lines of business" instead of the whole-estate wording when scoped (the
+  PageHeader eyebrow or description, one line, not a banner).
+- Seat basis: where the UI prints the seat or total basis for a scoped user, show the
+  seat_basis_note from the payload as the chart caption (summary, platform page).
+- OrganizationPage and Matrix: render whatever rows the API returns; do not assume
+  __unmatched__ or __unassigned__ exist (OverviewPage.jsx:57 and :138 unmatched lookups
+  must tolerate absence). MatrixCellCard: an out_of_scope 403 shows one muted line.
+  contributors_hidden renders "Contributors need the people.view permission".
+- UsersPage: the lob_cg filter chip values are limited to the scope when not all; a URL
+  filter outside the scope shows the chip and zero rows (server rule).
+- PlatformPage, ModelDrawer: top_users_hidden renders nothing (the table is already gated
+  by can('people.view')).
+- DataQualityPage and EvidenceDrawer: the Evidence button and drawer need
+  can('data.all'); without it the row shows a muted "Evidence needs the data.all
+  permission" tooltip.
+- Settings > Access gains "Data scopes" (id scopes) between Roles and Active Directory:
+  - Intro line: "A user without the data.all permission sees only the lines of business
+    granted here. Grants reach a user directly, through an AD group, or through an AD
+    organizational unit. The Executive and Analyst roles include data.all."
+  - A table grouped by subject (user / AD group / AD OU with the name and a source chip),
+    one row per subject, LOB chips per row (a chip whose value is not in the active
+    dataset gets a muted "not in current data" style and a Tooltip), remove (x) per chip
+    with a confirm Dialog, and a toolbar "Grant scope" Dialog: SegmentedControl Local
+    user | AD group | AD OU (the AD options disabled with the reason when AD is off), a
+    select of users (local and domain) or the DirectoryPicker typeahead used by the
+    Roles assignments, then a checkbox list of scope-values (search box above it when
+    more than 12, 'Unassigned' listed last with its meaning), Save posts
+    /access/scopes.
+  - A second panel "Who sees everything": the roles that carry data.all with their
+    assignment counts, read-only, linking to the Roles section.
+- UsersSection: a Scope column (chips "All" when scope.all, else the LOB values with the
+  via text in a Tooltip, or a muted "none"); the Edit dialog gains a "Lines of business"
+  checkbox list (direct grants only; inherited ones are listed read-only under it with
+  their via), saved through PUT /access/users/:id lob_cg. The Add local user and Add
+  domain user dialogs gain the same list.
+- RolesSection: nothing new beyond the catalogue key appearing (data.all), but the
+  permission checkbox list orders data.all last with its description.
+- Mocks: auth-session.json gains scope; access-users.json rows gain scope; new
+  access-scopes.json and access-scope-values.json; organization.json unchanged.
+
+### 15.7 Definition of done for this round
+
+- backend: npm test green, new tests/scope.test.js covering: fixture seeded, people
+  re-labelled into LOB A and LOB B in the test (UPDATE people SET lob_cg), a custom role
+  "LOB manager" (dashboard.view, people.view, export.csv) and user mgr.a with a direct
+  grant for A; then as mgr.a: /summary spend per platform equals SUM(cost_usd) over
+  rollup_person_day JOIN people WHERE lob_cg = 'A' in the range, active users equals the
+  distinct count, /trend buckets sum to the same, /platforms/:id spend and top_users all
+  A, /models and /models/:p/:m users all A, /organization rows are exactly A (no
+  Unmatched, no Unassigned, no B), /organization/cell for B answers 403 out_of_scope,
+  /users rows all A and ?lob_cg=B answers zero rows, /users/<B key> answers 404, every
+  report id in the catalogue answers 200 (users_unmatched with the note) and no row
+  carries a B person_key, display_name or lob_cg (serialize the JSON and search for the B
+  names and keys), /export/users.csv and /export/platform.csv and every
+  /export/report/<id>.csv the same, /verification/runs/:id answers 403 required data.all;
+  a user with the role but no grant answers 403 no_scope on /summary, /users, /reports/
+  costs_monthly and /export/summary.csv and 200 on /auth/session; an AD-source user row
+  inserted directly with ad_groups_json containing a group DN gets the group's grant
+  (scope on login body via helpers login after setting a local password hash is not
+  possible for AD, so call authService.effective directly), and an OU grant matches by DN
+  suffix and not by a partial match ("OU=Sales" must not match "OU=Presales"); a data.all
+  user's /summary equals the admin's; measures.resolve without a scope throws; the
+  'Unassigned' grant shows the Unassigned people and nothing else; seat allocation:
+  scoped seat spend equals whole x (A active / all active) for one month checked by hand.
+- Existing tests: auth.test.js permission matrix gains data.all (7 keys, Administrator 7,
+  Executive 3, Analyst 4, Viewer 1); reports and export tests pass the admin scope through
+  the helpers (helpers.startApp clients are unchanged; service-level tests that call
+  reports.* directly pass {all: true, lob_cg: []}).
+- smoke: node scripts/smoke-shapes.js green, then SMOKE_SCOPED=1 node
+  scripts/smoke-shapes.js green under the 200 ms budget.
+- frontend: npm run build green; screenshot QA light and dark: Nav ScopeChip, Data scopes
+  section with a grant created, Users section scope column and edit dialog, a scoped
+  user's landing, overview, organization (only their LOB), users page, platform page, the
+  no_scope empty state, the data quality evidence gate; zero console errors; ASCII scan.
+- live: pm2 aixp-dashboard restarted; as admin create the LOB manager role, a local user
+  with it and one LOB grant, sign in as that user on localhost:3090 and confirm the
+  figures match the admin's Organization row for that LOB; commit on dev; push.
