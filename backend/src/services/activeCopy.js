@@ -68,12 +68,32 @@ function activeUsage(platformId, opts = {}) {
 // the People table by alias, and the primer joins on e-mail.
 function emailToPersonKey(datasetId) {
   const map = new Map();
+  // Second map (CONTRACT 18.6), for vendors that identify people by a login (GitHub) instead of an e-mail:
+  // map.byLogin = user_id lowercased -> person_key, then e-mail local part -> person_key. The user_id wins;
+  // a local part shared by two different people is never used (no guessing).
+  const byLogin = new Map();
+  map.byLogin = byLogin;
   if (datasetId === null || datasetId === undefined) return map;
-  const rows = getDb().prepare("SELECT person_key, email FROM people WHERE dataset_id = ? AND coalesce(email, '') <> '' ORDER BY person_key").all(datasetId);
+  const db = getDb();
+  const rows = db.prepare("SELECT person_key, email FROM people WHERE dataset_id = ? AND coalesce(email, '') <> '' ORDER BY person_key").all(datasetId);
+  const local = new Map();
   for (const r of rows) {
     const e = String(r.email).replace(/\u00a0/g, ' ').trim().toLowerCase();
     if (e && !map.has(e)) map.set(e, r.person_key);
+    const at = e.indexOf('@');
+    if (at > 0) {
+      const l = e.slice(0, at);
+      const cur = local.get(l);
+      if (cur === undefined) local.set(l, r.person_key);
+      else if (cur !== r.person_key) local.set(l, null);
+    }
   }
+  const ids = db.prepare("SELECT person_key, user_id FROM people WHERE dataset_id = ? AND coalesce(user_id, '') <> '' ORDER BY person_key").all(datasetId);
+  for (const r of ids) {
+    const u = String(r.user_id).replace(/\u00a0/g, ' ').trim().toLowerCase();
+    if (u && !byLogin.has(u)) byLogin.set(u, r.person_key);
+  }
+  for (const [l, k] of local) if (k !== null && !byLogin.has(l)) byLogin.set(l, k);
   return map;
 }
 

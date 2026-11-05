@@ -44,6 +44,7 @@ async function mockFile(name) {
   return JSON.parse(JSON.stringify(mod.default));
 }
 
+const mockActionPolls = {};
 async function mockRequest(method, path, body) {
   const [bare, qs] = path.split('?');
   if (bare === '/auth/session') {
@@ -64,6 +65,14 @@ async function mockRequest(method, path, body) {
   if (bare === '/health') return { ok: true, buildId: 'mock', mock: true };
   if (method === 'POST' && bare === '/access/directory/test') return mockFile('access-directory-test');
   if (method === 'POST' && /^\/vendors\/[a-z_]+\/test$/.test(bare)) return mockFile('vendors-test');
+  if (method === 'POST' && /^\/vendors\/[a-z_]+\/actions\/[a-z_]+$/.test(bare)) {
+    mockActionPolls[bare] = 0;
+    return { user_code: 'MOCK-4821', verification_uri: 'https://microsoft.com/devicelogin', expires_in: 900, message: 'Open the address, enter the code and sign in with an administrator account.' };
+  }
+  if (method === 'GET' && /^\/vendors\/[a-z_]+\/actions\/[a-z_]+$/.test(bare)) {
+    mockActionPolls[bare] = (mockActionPolls[bare] || 0) + 1;
+    return mockActionPolls[bare] <= 2 ? { state: 'pending' } : { state: 'done', detail: 'Signed in as admin@contoso.example' };
+  }
   if (method === 'POST' && bare === '/vendor-orgs/apply') return { mapped: 4, unmatched: 1, people_unmatched: 17 };
   if (method === 'POST' && bare === '/access/directory/sync') return { users: 2, updated: 2, deactivated: 0, errors: [] };
   if (method !== 'GET') return { ok: true, mock: true };

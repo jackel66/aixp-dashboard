@@ -255,3 +255,15 @@ button { font: inherit; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
   .skel { animation: none; }
 }
+
+/* Help page: rail at wide widths, a select at narrow widths. */
+.help-layout { display: flex; gap: 32px; align-items: flex-start; }
+.help-side { width: 240px; flex: 0 0 auto; }
+.help-select { display: none; }
+.help-main { flex: 1; min-width: 0; }
+@media (max-width: 760px) {
+  .help-layout { display: block; }
+  .help-side { width: auto; margin-bottom: 16px; }
+  .help-rail { display: none; }
+  .help-select { display: block; }
+}

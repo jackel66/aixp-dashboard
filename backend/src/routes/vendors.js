@@ -70,4 +70,19 @@ router.post('/:id/test', wrap(async (req, res) => {
   res.json(await c.test());
 }));
 
+// Connector actions (CONTRACT 18.1): a sign-in flow started and polled from the connector card.
+function actionOf(req) {
+  const c = connectors.get(req.params.id);
+  if (!c) throw notFound('Connector');
+  const a = c.actions && Object.prototype.hasOwnProperty.call(c.actions, req.params.key) ? c.actions[req.params.key] : null;
+  if (!a) throw notFound('Action');
+  return a;
+}
+router.post('/:id/actions/:key', wrap(async (req, res) => {
+  res.json(await actionOf(req).start());
+}));
+router.get('/:id/actions/:key', wrap(async (req, res) => {
+  res.json(await actionOf(req).status());
+}));
+
 module.exports = router;

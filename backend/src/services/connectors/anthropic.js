@@ -39,6 +39,10 @@ function describe() {
     limits: { requests_per_minute: 60, pace_ms: 1000, max_span_days: 31, max_days_back: MAX_DAYS_BACK, page_size: client.LIMIT },
     lag: 'Typically 4 hours behind, up to 24 hours; values can change until about 7 days after month end.',
     history_floor: historyFloor(),
+    help: [
+      'The primary owner of the Enterprise organization creates the Analytics key at claude.ai under Organization settings, API.',
+      'The key needs the read:analytics scope; read:rbac_groups adds team mapping.',
+    ],
   };
 }
 

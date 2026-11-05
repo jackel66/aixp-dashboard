@@ -1,21 +1,260 @@
 {
- "connectors": [
-  {
-   "id": "anthropic",
-   "label": "Anthropic Claude Enterprise",
-   "platform": "anthropic",
-   "enabled": false,
-   "configured": false,
-   "problems": [
-    "anthropic.api_key"
-   ]
-  }
- ],
- "schedule": "",
- "auto_promote": true,
- "months_back": 13,
- "running": false,
- "last_pull_at": null,
- "last_pull": null,
- "next_run_at": null
+  "connectors": [
+    {
+      "id": "anthropic",
+      "label": "Anthropic Claude Enterprise",
+      "platform": "anthropic",
+      "enabled": false,
+      "configured": false,
+      "problems": [
+        "anthropic.api_key"
+      ],
+      "describe": {
+        "fields": [
+          {
+            "key": "anthropic.api_key",
+            "label": "API key",
+            "type": "secret",
+            "hint": "Analytics key, starts with sk-ant-api01-."
+          },
+          {
+            "key": "anthropic.rebuild_days",
+            "label": "Re-pull days",
+            "type": "number",
+            "min": 1,
+            "max": 31,
+            "default": 9,
+            "hint": "1 to 31. Recent days are fetched again because the vendor revises them for about a week."
+          },
+          {
+            "key": "anthropic.base_url",
+            "label": "Base URL",
+            "type": "text",
+            "advanced": true,
+            "default": "https://api.anthropic.com",
+            "hint": "Change only to reach the API through a proxy."
+          },
+          {
+            "key": "anthropic.anthropic_version",
+            "label": "API version",
+            "type": "text",
+            "advanced": true,
+            "default": "2023-06-01",
+            "hint": "Sent as the anthropic-version header."
+          }
+        ],
+        "history_floor": "2026-01-01",
+        "help": [
+          "The primary owner of the Enterprise organization creates the Analytics key at claude.ai under Organization settings, API.",
+          "The key needs the read:analytics scope, and read:rbac_groups adds team mapping."
+        ]
+      }
+    },
+    {
+      "id": "github",
+      "label": "GitHub Copilot",
+      "platform": "github",
+      "enabled": true,
+      "configured": false,
+      "problems": [
+        "github.token"
+      ],
+      "describe": {
+        "fields": [
+          {
+            "key": "github.token",
+            "label": "Access token",
+            "type": "secret",
+            "hint": "Fine-grained or classic token with read access to Copilot metrics."
+          },
+          {
+            "key": "github.enterprise",
+            "label": "Enterprise slug",
+            "type": "text",
+            "placeholder": "cg-enterprise",
+            "hint": "The slug in github.com/enterprises/<slug>."
+          },
+          {
+            "key": "github.scope",
+            "label": "Scope",
+            "type": "select",
+            "options": [
+              {
+                "value": "enterprise",
+                "label": "Enterprise"
+              },
+              {
+                "value": "org",
+                "label": "Organization"
+              }
+            ],
+            "default": "enterprise",
+            "hint": "Which level the metrics are read from."
+          },
+          {
+            "key": "github.rebuild_days",
+            "label": "Re-pull days",
+            "type": "number",
+            "min": 1,
+            "max": 28,
+            "default": 7
+          },
+          {
+            "key": "github.include_seats",
+            "label": "Include seat assignments",
+            "type": "boolean",
+            "default": true,
+            "hint": "Adds the seat list so inactive seats can be reported."
+          },
+          {
+            "key": "github.base_url",
+            "label": "Base URL",
+            "type": "text",
+            "advanced": true,
+            "default": "https://api.github.com"
+          }
+        ],
+        "help": [
+          "Create the token as an enterprise owner or billing manager.",
+          "The Copilot usage metrics policy must be enabled for the enterprise."
+        ]
+      }
+    },
+    {
+      "id": "openai",
+      "label": "OpenAI",
+      "platform": "openai",
+      "enabled": false,
+      "configured": false,
+      "problems": [
+        "openai.admin_key"
+      ],
+      "describe": {
+        "fields": [
+          {
+            "key": "openai.admin_key",
+            "label": "Admin API key",
+            "type": "secret",
+            "hint": "Starts with sk-admin-."
+          },
+          {
+            "key": "openai.org_id",
+            "label": "Organization ID",
+            "type": "text",
+            "placeholder": "org-..."
+          },
+          {
+            "key": "openai.project_ids",
+            "label": "Project IDs",
+            "type": "textarea",
+            "placeholder": "proj_abc\nproj_def",
+            "hint": "One per line. Blank pulls every project."
+          },
+          {
+            "key": "openai.rebuild_days",
+            "label": "Re-pull days",
+            "type": "number",
+            "min": 1,
+            "max": 31,
+            "default": 5
+          },
+          {
+            "key": "openai.base_url",
+            "label": "Base URL",
+            "type": "text",
+            "advanced": true,
+            "default": "https://api.openai.com"
+          }
+        ],
+        "help": [
+          "An organization owner creates the admin key under Settings, Admin keys."
+        ]
+      }
+    },
+    {
+      "id": "cowork",
+      "label": "Microsoft Copilot Cowork",
+      "platform": "cowork",
+      "enabled": true,
+      "configured": false,
+      "problems": [
+        "cowork.tenant_id",
+        "cowork.client_id"
+      ],
+      "describe": {
+        "fields": [
+          {
+            "key": "cowork.tenant_id",
+            "label": "Tenant ID",
+            "type": "text",
+            "placeholder": "00000000-0000-0000-0000-000000000000",
+            "hint": "The Entra tenant that holds the Copilot licences."
+          },
+          {
+            "key": "cowork.client_id",
+            "label": "Application (client) ID",
+            "type": "text",
+            "hint": "A public client app registration with device code flow allowed."
+          },
+          {
+            "key": "cowork.client_secret",
+            "label": "Client secret",
+            "type": "secret",
+            "advanced": true,
+            "hint": "Only needed when the app registration is confidential."
+          },
+          {
+            "key": "cowork.period",
+            "label": "Report period",
+            "type": "select",
+            "options": [
+              {
+                "value": "D7",
+                "label": "7 days"
+              },
+              {
+                "value": "D30",
+                "label": "30 days"
+              },
+              {
+                "value": "D90",
+                "label": "90 days"
+              },
+              {
+                "value": "D180",
+                "label": "180 days"
+              }
+            ],
+            "default": "D30"
+          },
+          {
+            "key": "cowork.rebuild_days",
+            "label": "Re-pull days",
+            "type": "number",
+            "min": 1,
+            "max": 30,
+            "default": 3
+          }
+        ],
+        "actions": [
+          {
+            "key": "devicecode",
+            "label": "Sign in as administrator",
+            "kind": "devicecode"
+          }
+        ],
+        "help": [
+          "A Global Reader or Reports Reader signs in once with the device code shown after the button is clicked.",
+          "The token is stored encrypted and refreshed in the background."
+        ]
+      }
+    }
+  ],
+  "schedule": "",
+  "auto_promote": true,
+  "months_back": 13,
+  "running": false,
+  "last_pull_at": null,
+  "last_pull": null,
+  "next_run_at": null
 }

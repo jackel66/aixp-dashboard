@@ -291,7 +291,7 @@ test('auth rules: detail needs people.view, the rest of /vendors needs data.mana
 });
 
 test('registry lists the connector with problems, enabled and describe()', async () => {
-  const l = connectors.list();
+  const l = connectors.list().filter((c) => c.id === 'anthropic');
   assert.equal(l.length, 1);
   assert.equal(l[0].id, 'anthropic');
   assert.equal(l[0].platform, 'anthropic');
@@ -301,7 +301,7 @@ test('registry lists the connector with problems, enabled and describe()', async
   assert.equal(l[0].describe.history_floor, '2026-01-01');
   const r = await app.call('GET', '/api/vendors');
   assert.equal(r.status, 200);
-  assert.equal(r.json.connectors[0].id, 'anthropic');
+  assert.ok(r.json.connectors.some((c) => c.id === 'anthropic'));
   assert.equal(r.json.running, false);
   assert.equal(r.json.next_run_at, null);
   for (const k of ['schedule', 'auto_promote', 'months_back', 'last_pull_at', 'last_pull']) assert.ok(k in r.json, k);

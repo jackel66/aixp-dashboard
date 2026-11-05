@@ -56,40 +56,119 @@ function statusOf(c, last) {
   return { tone: 'accent', text: 'Ready' };
 }
 
-// One card per connector. Only Anthropic has fields so far; the keys are prefixed by connector id.
+// Starting value of one field, from the settings map (secrets are {set} markers and start blank).
+function startValue(fd, s) {
+  const v = s[fd.key];
+  if (fd.type === 'secret') return '';
+  if (fd.type === 'boolean') return v === undefined ? !!fd.default : !!v;
+  if (v === undefined || v === null) return fd.default === undefined ? '' : String(fd.default);
+  return String(v);
+}
+
+function fieldError(fd, v) {
+  if (fd.type === 'number') {
+    if (v === '' || v === undefined) return fd.required ? 'Required' : '';
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 'Enter a number';
+    if (fd.min !== undefined && n < fd.min) return 'At least ' + fd.min;
+    if (fd.max !== undefined && n > fd.max) return 'At most ' + fd.max;
+    return '';
+  }
+  if (fd.type === 'text' || fd.type === 'textarea' || fd.type === 'select') return fd.required && String(v).trim() === '' ? 'Required' : '';
+  return '';
+}
+
+function ActionPanel({ c, a, disabled }) {
+  const toast = useToast();
+  const [flow, setFlow] = useState(null); // {user_code, verification_uri, expires_in, message}
+  const [state, setState] = useState(null); // {state, detail}
+  const [starting, setStarting] = useState(false);
+  const timer = useRef(null);
+  const path = '/vendors/' + c.id + '/actions/' + a.key;
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const poll = () => {
+    timer.current = setTimeout(async () => {
+      try {
+        const r = await api.get(path);
+        setState(r);
+        if (r.state === 'pending') poll();
+        else if (r.state === 'done') toast.success('Signed in');
+      } catch (e) { setState({ state: 'error', detail: e.message || 'Status check failed' }); }
+    }, 5000);
+  };
+  const start = async () => {
+    clearTimeout(timer.current);
+    setStarting(true);
+    setState(null);
+    try {
+      const r = await api.post(path, {});
+      setFlow(r);
+      setState({ state: 'pending' });
+      poll();
+    } catch (e) { setFlow(null); toast.error(e.message || 'Could not start the sign-in'); } finally { setStarting(false); }
+  };
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <Button variant="secondary" onClick={start} disabled={disabled || starting}>{starting ? 'Starting' : a.label || 'Sign in as administrator'}</Button>
+      {disabled && <span className="t-small text-muted" style={{ marginLeft: 8 }}>Save changes first.</span>}
+      {flow && (
+        <div role="status" aria-live="polite" style={{ marginTop: 12, padding: 12, border: '1px solid var(--line)', borderRadius: 8 }}>
+          <p className="t-small text-muted m-0">Open <a href={flow.verification_uri} target="_blank" rel="noreferrer noopener">{flow.verification_uri}</a> and enter this code.</p>
+          <p className="num m-0" style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.12em', margin: '6px 0' }} data-testid="device-code">{flow.user_code}</p>
+          {flow.message && <p className="t-small text-muted m-0">{flow.message}</p>}
+          <p className="t-small m-0" style={{ marginTop: 8 }}>
+            {state && state.state === 'done' && <><StatusChip status="pass">Signed in</StatusChip> <span>{state.detail}</span></>}
+            {state && state.state === 'error' && <><StatusChip status="fail">Failed</StatusChip> <span>{state.detail}</span></>}
+            {(!state || state.state === 'pending') && <span className="text-muted">Waiting for you to finish signing in. The code expires in {Math.round((flow.expires_in || 0) / 60)} min.</span>}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One card per connector. Every field comes from c.describe.fields; the keys are full settings keys.
 function ConnectorCard({ c, s, last, busy, onPull }) {
   const toast = useToast();
   const { save, saving } = useSaver();
-  const k = (name) => c.id + '.' + name;
-  const base = {
-    enabled: !!s[k('enabled')],
-    rebuild_days: String(s[k('rebuild_days')] === undefined ? 9 : s[k('rebuild_days')]),
-    base_url: s[k('base_url')] || '',
-    version: s[k('anthropic_version')] || ''
-  };
+  const d = c.describe || {};
+  const fields = d.fields || [];
+  const base = {};
+  fields.forEach((fd) => { base[fd.key] = startValue(fd, s); });
+  base[c.id + '.enabled'] = !!s[c.id + '.enabled'];
   const [f, setF] = useState(base);
-  const [key, setKey] = useState('');
-  const [clearKey, setClearKey] = useState(false);
+  const [clear, setClear] = useState({});
   const [testing, setTesting] = useState(false);
   const [test, setTest] = useState(null);
   const sig = JSON.stringify(base);
-  useEffect(() => { setF(base); setKey(''); setClearKey(false); }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setF(base); setClear({}); }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (n, v) => setF((o) => ({ ...o, [n]: v }));
 
   const patch = {};
-  if (f.enabled !== base.enabled) patch[k('enabled')] = f.enabled;
-  if (f.rebuild_days !== base.rebuild_days) patch[k('rebuild_days')] = Number(f.rebuild_days);
-  if (f.base_url.trim() !== base.base_url) patch[k('base_url')] = f.base_url.trim();
-  if (f.version.trim() !== base.version) patch[k('anthropic_version')] = f.version.trim();
-  if (clearKey) patch[k('api_key')] = null;
-  else if (key !== '') patch[k('api_key')] = key;
+  if (f[c.id + '.enabled'] !== base[c.id + '.enabled']) patch[c.id + '.enabled'] = f[c.id + '.enabled'];
+  const errors = {};
+  fields.forEach((fd) => {
+    const v = f[fd.key];
+    if (fd.type === 'secret') {
+      if (clear[fd.key]) patch[fd.key] = null;
+      else if (v !== '' && v !== undefined) patch[fd.key] = v;
+      return;
+    }
+    const err = fieldError(fd, v);
+    if (err) errors[fd.key] = err;
+    if (v === base[fd.key]) return;
+    if (fd.type === 'number') patch[fd.key] = v === '' ? null : Number(v);
+    else if (fd.type === 'boolean') patch[fd.key] = !!v;
+    else patch[fd.key] = typeof v === 'string' ? v.trim() : v;
+  });
   const dirty = Object.keys(patch).length > 0;
-  const rd = Number(f.rebuild_days);
-  const urlOk = /^https?:\/\/\S+$/.test(f.base_url.trim());
-  const valid = Number.isInteger(rd) && rd >= 1 && rd <= 31 && urlOk && f.version.trim() !== '';
-  const stored = isSet(s[k('api_key')]) && !clearKey;
+  const valid = Object.keys(errors).length === 0;
   const st = statusOf(c, last);
-  const floor = s[k('history_floor')] || c.history_floor || '2026-01-01';
+  const floor = s[c.id + '.history_floor'] || c.history_floor || d.history_floor;
+  const enabled = f[c.id + '.enabled'];
+  const normal = fields.filter((fd) => !fd.advanced);
+  const advanced = fields.filter((fd) => fd.advanced);
+  const actions = (d.actions || []).filter((a) => a.kind === 'devicecode');
 
   const runTest = async () => {
     setTesting(true);
@@ -100,46 +179,75 @@ function ConnectorCard({ c, s, last, busy, onPull }) {
     } catch (e) { toast.error(e.message || 'Test failed'); setTest(null); } finally { setTesting(false); }
   };
 
+  const id = (fd) => 'vc-' + c.id + '-' + fd.key.replace(/[^a-z0-9]+/gi, '-');
+  const hintOf = (fd) => (errors[fd.key] ? errors[fd.key] + (fd.hint ? '. ' + fd.hint : '') : fd.hint);
+  const render = (fd) => {
+    const v = f[fd.key];
+    const bad = !!errors[fd.key];
+    if (fd.type === 'secret') {
+      const stored = isSet(s[fd.key]) && !clear[fd.key];
+      return (
+        <div key={fd.key}>
+          <SecretField id={id(fd)} label={fd.label} stored={stored} value={v || ''} hint={fd.hint}
+            onChange={(nv) => { set(fd.key, nv); setClear((o) => ({ ...o, [fd.key]: false })); }} />
+          {isSet(s[fd.key]) && (
+            <div style={{ marginTop: -4, marginBottom: 12 }}>
+              <label className="inline-flex items-center gap-2 t-small"><input type="checkbox" checked={!!clear[fd.key]}
+                onChange={(e) => { setClear((o) => ({ ...o, [fd.key]: e.target.checked })); if (e.target.checked) set(fd.key, ''); }} /> Remove the stored key on save</label>
+            </div>
+          )}
+        </div>
+      );
+    }
+    if (fd.type === 'boolean') {
+      return (
+        <Field key={fd.key} label={fd.label} hint={fd.hint}>
+          <label className="inline-flex items-center gap-2"><input id={id(fd)} type="checkbox" checked={!!v} onChange={(e) => set(fd.key, e.target.checked)} /> {v ? 'On' : 'Off'}</label>
+        </Field>
+      );
+    }
+    let input;
+    if (fd.type === 'select') {
+      input = (
+        <select id={id(fd)} className="input" value={v} onChange={(e) => set(fd.key, e.target.value)} style={FULL}>
+          {!(fd.options || []).some((o) => o.value === v) && <option value={v}>{v === '' ? 'Choose' : v}</option>}
+          {(fd.options || []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    } else if (fd.type === 'textarea') {
+      input = <textarea id={id(fd)} className="input" rows={4} value={v} placeholder={fd.placeholder} onChange={(e) => set(fd.key, e.target.value)} style={{ ...FULL, resize: 'vertical' }} spellCheck={false} aria-invalid={bad} />;
+    } else if (fd.type === 'number') {
+      input = <input id={id(fd)} className="input num" type="number" min={fd.min} max={fd.max} value={v} placeholder={fd.placeholder} onChange={(e) => set(fd.key, e.target.value)} style={FULL} aria-invalid={bad} />;
+    } else {
+      input = <input id={id(fd)} className="input num" value={v} placeholder={fd.placeholder} onChange={(e) => set(fd.key, e.target.value)} style={FULL} spellCheck={false} aria-invalid={bad} />;
+    }
+    return <Field key={fd.key} label={fd.label} htmlFor={id(fd)} hint={hintOf(fd)}>{input}</Field>;
+  };
+  const GRID = { gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' };
+
   return (
     <SectionCard id={'vendor-' + c.id} title={c.label} caption={'Usage rows land on the ' + c.platform + ' platform.'}
       dirty={dirty} saving={saving} disabled={!valid}
       onSave={() => save(() => api.put('/settings', { patch }), c.label + ' settings saved')}
       extra={<Chip tone={st.tone}>{st.text}</Chip>}>
-      <Field label="Connector" hint={f.enabled ? 'Included when Pull now runs for every enabled connector.' : 'Off. Settings stay saved but this connector is skipped.'}>
-        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={f.enabled} onChange={(e) => set('enabled', e.target.checked)} /> Enabled</label>
+      <Field label="Connector" hint={enabled ? 'Included when Pull now runs for every enabled connector.' : 'Off. Settings stay saved but this connector is skipped.'}>
+        <label className="inline-flex items-center gap-2"><input type="checkbox" checked={enabled} onChange={(e) => set(c.id + '.enabled', e.target.checked)} /> Enabled</label>
       </Field>
       {!c.configured && c.problems && c.problems.length > 0 && <p className="t-small text-muted m-0" style={{ marginBottom: 12 }}>Missing: {c.problems.join(', ')}.</p>}
-      <div className="grid gap-x-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-        <div>
-          <SecretField id={'vc-key-' + c.id} label="API key" stored={stored} value={key} onChange={(v) => { setKey(v); setClearKey(false); }}
-            hint="Analytics key, starts with sk-ant-api01-." />
-          {isSet(s[k('api_key')]) && (
-            <div style={{ marginTop: -4, marginBottom: 12 }}>
-              <label className="inline-flex items-center gap-2 t-small"><input type="checkbox" checked={clearKey} onChange={(e) => { setClearKey(e.target.checked); if (e.target.checked) setKey(''); }} /> Remove the stored key on save</label>
-            </div>
-          )}
-        </div>
-        <Field label="Re-pull days" htmlFor={'vc-rebuild-' + c.id} hint="1 to 31. Recent days are fetched again because the vendor revises them for about a week.">
-          <input id={'vc-rebuild-' + c.id} className="input num" type="number" min="1" max="31" value={f.rebuild_days} onChange={(e) => set('rebuild_days', e.target.value)} style={FULL} />
-        </Field>
-      </div>
-      <p className="t-small text-muted m-0" style={{ marginBottom: 12 }}>Data is available from {floor}.</p>
-      <details style={{ marginBottom: 12 }}>
-        <summary className="t-small" style={{ cursor: 'pointer', fontWeight: 600 }}>Advanced</summary>
-        <div className="grid gap-x-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginTop: 8 }}>
-          <Field label="Base URL" htmlFor={'vc-url-' + c.id} hint="Change only to reach the API through a proxy.">
-            <input id={'vc-url-' + c.id} className="input num" value={f.base_url} onChange={(e) => set('base_url', e.target.value)} style={FULL} spellCheck={false} aria-invalid={!urlOk} />
-          </Field>
-          <Field label="API version" htmlFor={'vc-ver-' + c.id} hint="Sent as the anthropic-version header.">
-            <input id={'vc-ver-' + c.id} className="input num" value={f.version} onChange={(e) => set('version', e.target.value)} style={FULL} spellCheck={false} />
-          </Field>
-        </div>
-      </details>
-      {c.id === 'anthropic' && <RequirementsFold id="anthropic" />}
-      <p className="t-small text-muted m-0">The primary owner of the Enterprise organization creates the Analytics key at claude.ai under Organization settings, API. The key needs the read:analytics scope, and read:rbac_groups adds team mapping.</p>
+      <div className="grid gap-x-4" style={GRID}>{normal.map(render)}</div>
+      {actions.map((a) => <ActionPanel key={a.key} c={c} a={a} disabled={dirty} />)}
+      {floor && <p className="t-small text-muted m-0" style={{ marginBottom: 12 }}>Data is available from {floor}.</p>}
+      {advanced.length > 0 && (
+        <details style={{ marginBottom: 12 }}>
+          <summary className="t-small" style={{ cursor: 'pointer', fontWeight: 600 }}>Advanced</summary>
+          <div className="grid gap-x-4" style={{ ...GRID, marginTop: 8 }}>{advanced.map(render)}</div>
+        </details>
+      )}
+      <RequirementsFold id={c.id} />
+      {(d.help || []).map((h, i) => <p key={i} className="t-small text-muted m-0" style={{ marginBottom: 4 }}>{h}</p>)}
       <div className="flex gap-2 flex-wrap items-center" style={{ marginTop: 16 }}>
         <Button variant="secondary" onClick={runTest} disabled={testing || dirty}>{testing ? 'Testing' : 'Test connection'}</Button>
-        <Button variant="secondary" onClick={() => onPull([c.id])} disabled={busy || dirty || !f.enabled || !c.configured}>Pull this connector only</Button>
+        <Button variant="secondary" onClick={() => onPull([c.id])} disabled={busy || dirty || !enabled || !c.configured}>Pull this connector only</Button>
         {dirty && <span className="t-small text-muted">Save changes before testing or pulling.</span>}
       </div>
       {test && (

@@ -7,7 +7,8 @@ const { broadcast } = require('./events');
 const secrets = require('./secrets');
 
 // Keys stored encrypted. GET shows them as {set: bool}; server code uses getSecret().
-const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token', 'ad.bind_password', 'anthropic.api_key']);
+const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token', 'ad.bind_password', 'anthropic.api_key', 'openai.admin_key', 'openai.enterprise_key',
+  'cowork.client_secret', 'cowork.refresh_token', 'github.token']);
 
 const intRange = (name, lo, hi) => (v) => {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
@@ -35,6 +36,11 @@ const text = (name, max, re) => (v) => {
 const bool = (name) => (v) => {
   if (typeof v !== 'boolean') throw badRequest(`${name} must be true or false`);
   return v;
+};
+const coworkBase = (name, v) => {
+  const t = text(name, 300)(v).replace(/\/+$/, '');
+  if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest(`${name} must be an http or https URL`);
+  return t;
 };
 const PBI_TABLE_KEYS = ['usage', 'people', 'seat_rate', 'region_map', 'lob_cg_map'];
 const PBI_TABLE_NAME = /^[A-Za-z0-9 _.-]+$/;
@@ -70,6 +76,46 @@ const VALIDATORS = {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t) || Number.isNaN(Date.parse(`${t}T00:00:00Z`))) throw badRequest('anthropic.history_floor must be a date (YYYY-MM-DD)');
     return t;
   },
+  'openai.enabled': bool('openai.enabled'),
+  'openai.base_url': (v) => {
+    const t = text('openai.base_url', 300)(v).replace(/\/+$/, '');
+    if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest('openai.base_url must be an http or https URL');
+    return t;
+  },
+  'openai.rebuild_days': intRange('openai.rebuild_days', 1, 31),
+  'openai.enterprise_org_id': text('openai.enterprise_org_id', 80, /^[A-Za-z0-9_.-]+$/),
+  'openai.enterprise_base_url': (v) => {
+    const t = text('openai.enterprise_base_url', 300)(v).replace(/\/+$/, '');
+    if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest('openai.enterprise_base_url must be an http or https URL');
+    return t;
+  },
+  'openai.enterprise_costs_path': (v) => {
+    const t = text('openai.enterprise_costs_path', 300, /^[A-Za-z0-9_\-./{}]+$/)(v);
+    if (!t.startsWith('/')) throw badRequest('openai.enterprise_costs_path must start with /');
+    return t;
+  },
+  'openai.enterprise_rate': (v) => {
+    if (v === null || v === undefined || v === '') return '';
+    return numRange('openai.enterprise_rate', 0, 1000)(v);
+  },
+  'github.enabled': bool('github.enabled'),
+  'github.enterprise': text('github.enterprise', 100, /^[A-Za-z0-9._-]+$/),
+  'github.orgs': (v) => {
+    const raw = Array.isArray(v) ? v.join(' ') : v;
+    const t = text('github.orgs', 2000)(raw);
+    const list = t.split(/[\s,;]+/).filter(Boolean);
+    for (const o of list) if (!/^[A-Za-z0-9._-]+$/.test(o)) throw badRequest(`github.orgs has a login that is not allowed: ${o}`);
+    return list.join(', ');
+  },
+  'github.base_url': (v) => {
+    const t = text('github.base_url', 300)(v).replace(/\/+$/, '');
+    if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest('github.base_url must be an http or https URL');
+    return t;
+  },
+  'github.rebuild_days': intRange('github.rebuild_days', 1, 31),
+  'github.dollars_mode': oneOf('github.dollars_mode', ['allocate', 'per_user']),
+  'github.map_teams': bool('github.map_teams'),
+  'github.calls_per_hour': intRange('github.calls_per_hour', 500, 14000),
   'ad.enabled': bool('ad.enabled'),
   'ad.domain': (v) => text('ad.domain', 253, /^[A-Za-z0-9._-]+$/)(v).toLowerCase(),
   'ad.bind_user': text('ad.bind_user', 256),
@@ -131,6 +177,17 @@ const VALIDATORS = {
   },
   'spend.seat_basis': oneOf('spend.seat_basis', ['licensed', 'active']),
   'spend.default_basis': oneOf('spend.default_basis', ['consumption', 'seat', 'total']),
+  'cowork.enabled': bool('cowork.enabled'),
+  'cowork.tenant_id': text('cowork.tenant_id', 120, /^[A-Za-z0-9.-]+$/),
+  'cowork.client_id': text('cowork.client_id', 80, /^[A-Za-z0-9-]+$/),
+  'cowork.service_ids': (v) => {
+    const t = text('cowork.service_ids', 400)(v);
+    if (t && !/^[A-Za-z0-9_.-]+(\s*,\s*[A-Za-z0-9_.-]+)*$/.test(t)) throw badRequest('cowork.service_ids must be a comma list of service ids');
+    return t.split(',').map((x) => x.trim()).filter(Boolean).join(',');
+  },
+  'cowork.graph_base': (v) => coworkBase('cowork.graph_base', v),
+  'cowork.login_base': (v) => coworkBase('cowork.login_base', v),
+  'cowork.users_source': oneOf('cowork.users_source', ['copilot_report', 'all_licensed']),
   'cowork.rate': numRange('cowork.rate', 0, 1),
   'cowork.rate_confirmed': (v) => {
     if (typeof v !== 'boolean') throw badRequest('cowork.rate_confirmed must be true or false');

@@ -21,7 +21,7 @@ function idParam(v) {
 
 router.get('/', (req, res) => {
   const a = datasets.active();
-  res.json({ active_id: a ? a.id : null, rows: datasets.list().map(row) });
+  res.json({ active_id: a ? a.id : null, rows: datasets.list().map((d) => Object.assign(row(d), { note: d.note })) });
 });
 
 router.post('/rollback', (req, res) => {

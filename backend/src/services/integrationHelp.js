@@ -101,9 +101,9 @@ const INTEGRATIONS = [
   {
     id: 'github',
     name: 'GitHub Copilot',
-    status: 'planned',
+    status: 'built',
     kind: 'vendor',
-    summary: 'Planned connector. Credits per user per model per day come from the Copilot metrics user report; dollars per user need the premium request usage endpoint per user or an allocation of the daily billing usage.',
+    summary: 'Credits per user per model per day come from the Copilot metrics user report; dollars per user need the premium request usage endpoint per user or an allocation of the daily billing usage.',
     urls: [
       { label: 'API base', value: 'https://api.github.com' },
       { label: 'Daily per-user metrics report', value: 'GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD (returns download links to NDJSON)' },
@@ -127,15 +127,15 @@ const INTEGRATIONS = [
       'Premium request usage covers 24 months but is one call per user per window, so a 500-user estate over 90 days is thousands of calls.',
       'Billing usage rows are per day, product, SKU and organization, not per user. Usernames carry an EMU suffix (_capgroup) that the loader strips.',
     ],
-    where: 'Not built yet. It will appear under Settings > Data source > Vendor connectors.',
+    where: 'Settings > Data source > Vendor connectors > GitHub Copilot. Test connection checks the token, enterprise billing, Copilot metrics, organizations, seats and the rate limit.',
     notes: ['Whether the API totals equal the CSV the customer downloads today is not established; a same-month side-by-side pull comes first.'],
   },
   {
     id: 'openai',
     name: 'OpenAI (API platform and ChatGPT Enterprise)',
-    status: 'planned',
+    status: 'built',
     kind: 'vendor',
-    summary: 'Planned connector. Two surfaces: the API platform organization usage and costs, and the ChatGPT Enterprise per-user credits that the current CSV carries.',
+    summary: 'Two surfaces: the API platform organization usage and costs, and the ChatGPT Enterprise per-user credits that the current CSV carries.',
     urls: [
       { label: 'API platform base', value: 'https://api.openai.com' },
       { label: 'Usage', value: 'GET /v1/organization/usage/completions (group_by user_id, model; bucket_width 1d)' },
@@ -158,15 +158,15 @@ const INTEGRATIONS = [
       'ChatGPT Enterprise per-user rows are hourly, kept 30 days with no backfill, with dollars estimated at list rate per credit (not billed amounts).',
       'Rate limits, lag, revisions and history depth of the API platform endpoints were not stated on the pages read.',
     ],
-    where: 'Not built yet.',
+    where: 'Settings > Data source > Vendor connectors > OpenAI. Each of the two keys is optional; Test connection checks the API platform key, usage, costs, the ChatGPT Enterprise costs route and the record shape it returns.',
     notes: ['No official USD price per ChatGPT Enterprise credit was found; the contract rate stays a setting.'],
   },
   {
     id: 'cowork',
     name: 'Microsoft Copilot Cowork (Copilot credits)',
-    status: 'planned',
+    status: 'built',
     kind: 'vendor',
-    summary: 'Planned connector. Copilot credits per user are reported in the Microsoft 365 admin center; the API surface is thin and delegated-only.',
+    summary: 'Copilot credits per user are reported in the Microsoft 365 admin center; the API surface is thin and delegated-only.',
     urls: [
       { label: 'Graph reports', value: 'https://graph.microsoft.com/v1.0/reports/getMicrosoft365CopilotUsageUserDetail(period=\'D30\') (licensed users, no credits)' },
       { label: 'Copilot cost management (beta)', value: 'https://graph.microsoft.com/beta/copilot/costManagement/userBalances/{userId} (consumed credits per user, no date parameter, delegated only)' },
@@ -181,6 +181,7 @@ const INTEGRATIONS = [
     permissions: [
       'Reports.Read.All (application) for the Copilot usage reports; a reports reader or global reader role for delegated reads.',
       'CopilotCostManagement.* delegated permissions for user balances (exact names unverified).',
+      'The Entra app registration must allow public client flows (Authentication, Allow public client flows: Yes), because the administrator sign-in uses the device code flow with no client secret.',
       'Cost Management Reader on the Azure subscription or billing account for the pay-as-you-go meter (role name unverified).',
     ],
     limits: [
@@ -188,7 +189,7 @@ const INTEGRATIONS = [
       'No API returns USD; the dashboard computes credits x a configured rate. 0.01 is the pay-as-you-go list price per credit; 0.008 matches the prepaid pack (25,000 credits for 200 USD).',
       'Which admin page produced the current "Monthly credits used" export is still to be confirmed with CG.',
     ],
-    where: 'Not built yet.',
+    where: 'Settings > Data source > Vendor connectors > Microsoft Copilot Cowork. Enter tenant id, client id and client secret, then press Sign in as administrator; Test connection checks the app sign-in, the Copilot report, the user lookup, the administrator sign-in, one user balance and the tenant balance.',
     notes: ['The Cowork usage report (tasks, active days) has no credits column; the credits report has no task detail.'],
   },
 ];

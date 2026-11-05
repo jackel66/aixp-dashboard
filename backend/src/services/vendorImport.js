@@ -66,7 +66,7 @@ function planWindow(c) {
     const p = (active.platforms || []).find((x) => x.platform === c.platform);
     if (p && p.max_date) lastDay = p.max_date;
   }
-  const from = win.planFrom({
+  let from = win.planFrom({
     floor: c.historyFloor(),
     monthsBack: Number(settings.get('vendors.months_back', 13)) || 13,
     rebuildDays: c.rebuildDays(),
@@ -74,6 +74,11 @@ function planWindow(c) {
     maxDaysBack: c.maxDaysBack || null,
     today,
   });
+  // A connector whose figures are whole-month totals (GitHub per-user dollars) re-reads from the month start,
+  // so the carry-over cut-off is the month start and carried days never overlap a month figure.
+  let align = null;
+  try { align = c.describe().window_align; } catch (e) { align = null; }
+  if (align === 'month') from = win.maxDate(`${from.slice(0, 7)}-01`, c.historyFloor());
   return { from, to: win.endNow(time.now()), incremental: !!lastDay };
 }
 
@@ -129,7 +134,10 @@ async function pull(opts = {}) {
     const byEmail = emailToPersonKey(activeNow ? activeNow.id : null);
     const resolve = (key, email) => {
       const e = String(email || '').trim().toLowerCase();
-      return (e && byEmail.get(e)) || key;
+      if (e) return byEmail.get(e) || key;
+      // No e-mail on the row (GitHub): the key is a login; match People user_id, then the e-mail local part.
+      const login = String(key || '').trim().toLowerCase();
+      return (login && byEmail.byLogin && byEmail.byLogin.get(login)) || key;
     };
     const usage = [];
     const byVendor = {};

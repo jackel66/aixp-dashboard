@@ -97,7 +97,7 @@ export function RequirementsFold({ id }) {
       <summary className="t-small" style={{ cursor: 'pointer', fontWeight: 600 }}>Requirements</summary>
       <div style={{ marginTop: 8 }}>
         {open && <FoldBody id={id} />}
-        <p className="t-small m-0" style={{ marginTop: 12 }}><Link to={'/help#' + id}>Open help</Link></p>
+        <p className="t-small m-0" style={{ marginTop: 12 }}><Link to={'/help?tab=' + id}>Open help</Link></p>
       </div>
     </details>
   );
