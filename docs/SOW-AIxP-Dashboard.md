@@ -1,9 +1,9 @@
 # Statement of work: AIxP Dashboard build
 
-Client: Capital Group (CG)
+Client: The Capital Group
 Provider: Trace3, Financial Services Group
 Prepared by: Doug Austin, Applied AI Architect
-Version: 0.4 draft, 11-5-2026
+Version: 1.0 draft, 11-5-2026
 Status: for review.
 
 ## 1. Background
@@ -42,7 +42,7 @@ Cross-platform discovery: the identity model (the People extract, email and alia
 
 ### 3.2 Phase 2: Access and environment
 
-Working with Capital Group's internal teams to obtain API access on each platform (credentials, application registrations, IAM policies, consent), provision the server that runs the platform (Windows or Linux, sized from discovery), and open the network path: outbound access to the vendor hosts directly or through the corporate proxy with the corporate certificate authority, inbound access through a reverse proxy with a corporate TLS certificate, LDAPS to the domain controllers, and firewall rules for each. Trace3 writes the requests with the exact hosts, ports and permissions; Capital Group teams approve and implement them. The security review inputs the CG security team needs are prepared in this phase.
+Working with Capital Group's internal teams to obtain API access on each platform (credentials, application registrations, IAM policies, consent), provision the server that runs the platform (Windows or Linux, sized from discovery), and open the network path: outbound access to the vendor hosts directly or through the corporate proxy with the corporate certificate authority, inbound access through a reverse proxy with a corporate TLS certificate, LDAPS to the domain controllers, and firewall rules for each. Trace3 writes the requests with the exact hosts, ports and permissions; Capital Group teams approve and implement them. The security review inputs the Capital Group security team needs are prepared in this phase.
 
 ### 3.3 Phase 3: Design and development
 
@@ -70,9 +70,9 @@ Administrator and SME walkthroughs, the maintained documentation set (design con
 | D2 | Access and environment in place | 2 | Credentials for each platform received; server reachable; network path proven by the connection tests |
 | D3 | Show back design | 3 | Business leader views agreed in writing by the product owner |
 | D4 | AIxP Dashboard application, source and build | 3 | Builds from source; automated test suite passes; every page renders |
-| D5 | Platform connectors (APEX plus five vendors) | 3, 4 | Each connection test passes with CG credentials; one month pulled per platform with freshness, duplicate and attribution checks passing or explained |
+| D5 | Platform connectors (APEX plus five vendors) | 3, 4 | Each connection test passes with production credentials; one month pulled per platform with freshness, duplicate and attribution checks passing or explained |
 | D6 | Identity, access and security | 3 | AD sign-in works for a named test group; scopes verified by restricted-consumer tests; review items closed with evidence |
-| D7 | Installed production instance | 3 | Running on the CG server behind TLS, schedule active, runbook delivered |
+| D7 | Installed production instance | 3 | Running on the production server behind TLS, schedule active, runbook delivered |
 | D8 | Reconciliation report | 5 | Per-platform differences explained with confidence levels; product owner sign-off |
 | D9 | Documentation and handover | 6 | Document set delivered; walkthroughs held; support window started |
 
@@ -117,18 +117,18 @@ The target is two months from kick-off to handover. Three months is the outer bo
 
 ### 8.1 Effort estimate by phase
 
-Hours are Trace3 effort estimates for planning and staffing. They are not fees; fees and the engagement model are in the order form. The low figure assumes access arrives on time and the platforms behave as documented. The high figure allows for a fix loop on every platform, an APEX path that needs bespoke work, and two rounds of design review with business leaders. Plan at the high figure.
+Hours are Trace3 effort estimates for planning and staffing. They are not fees; fees and the engagement model are in the order form. The estimate assumes that the internal teams own the work only they can do: finding and booking the platform owners, writing, submitting and chasing the access and environment requests, provisioning the server and the firewall rules, and supplying the billing statements and the identity extract for reconciliation. Trace3 supplies the exact content of every request (hosts, ports, permissions) and verifies each path once it is granted. The low figure assumes access arrives on time and the platforms behave as documented. The high figure allows for a fix loop on every platform, an APEX path that needs bespoke work, and two rounds of design review with business leaders. Plan at the high figure. The build phase does not shrink with faster prerequisites; its range is set by the APEX connector, which is unknown until discovery.
 
 | Phase | Work | Low hours | High hours | Main driver of the range |
 |---|---|---|---|---|
-| 1 | Discovery: six platform tracks, identity, show back and environment workshops, report, integration matrix, access requests, environment specification | 80 | 120 | APEX unknowns; number of owners to meet |
-| 2 | Access and environment: request writing, follow-up with internal teams, server specification, proxy and certificate work, security review inputs, verification of each path | 40 | 80 | CG lead times and rework on requests |
-| 3 | Design and development: show back design with leaders, show back views, APEX connector, adaptation of the five vendor connectors, live statistics, cost model and labelling, organization correlation, security hardening, proxy and certificate support, installation and runbook | 240 | 320 | APEX connector; design review rounds |
-| 4 | Data gathering remediation: fix loop per platform with its owner, identity resolution, gap closure, unmatched usage reduction | 70 | 120 | Response shapes that differ from documentation |
-| 5 | Metrics and cost reconciliation: per platform closed day and month, billing comparison, Power BI comparison, rate confirmation, restricted-consumer tests, report | 90 | 130 | Billing statement availability; differences to explain |
-| 6 | Handover and support: walkthroughs, document set, support window | 40 | 60 | Length of the support window |
-| All | Governance: weekly status, point-of-contact time, change control, issue tracking | 30 | 50 | Engagement length |
-| | Total | 590 | 880 | |
+| 1 | Discovery: six platform tracks, identity, show back and environment workshops, report, integration matrix, access requests, environment specification | 50 | 80 | APEX unknowns; number of owners to meet |
+| 2 | Access and environment: request writing, follow-up with internal teams, server specification, proxy and certificate work, security review inputs, verification of each path | 15 | 30 | Internal lead times and rework on requests |
+| 3 | Design and development: show back design with leaders, show back views, APEX connector, adaptation of the five vendor connectors, live statistics, cost model and labelling, organization correlation, security hardening, proxy and certificate support, installation and runbook | 230 | 300 | APEX connector; design review rounds |
+| 4 | Data gathering remediation: fix loop per platform with its owner, identity resolution, gap closure, unmatched usage reduction | 50 | 90 | Response shapes that differ from documentation |
+| 5 | Metrics and cost reconciliation: per platform closed day and month, billing comparison, Power BI comparison, rate confirmation, restricted-consumer tests, report | 70 | 100 | Billing statement availability; differences to explain |
+| 6 | Handover and support: walkthroughs, document set, support window | 40 | 50 | Length of the support window |
+| All | Governance: weekly status, point-of-contact time, change control, issue tracking | 25 | 40 | Engagement length |
+| | Total | 480 | 690 | |
 
 ### 8.2 Schedule
 
@@ -143,7 +143,7 @@ Durations are Trace3 estimates, not commitments, and assume the dependencies in 
 | 6 to 8 | Reconciliation of the most recent closed day and closed month per platform against the platform's reporting and billing; Power BI comparison; access tests; report and sign-off | A full calendar month run in parallel needs every connector live before that month starts, which the eight-week plan cannot promise; the twelve-week plan reconciles one full calendar month |
 | 8 | Handover walkthroughs; support window starts | |
 
-The one item the team controls that decides the outcome is issuing complete, correct access and environment requests in weeks 1 and 2. Everything after that is paced by Capital Group's internal lead times, so the weekly status note tracks each request from issue to grant as its own line.
+The one item the team controls that decides the outcome is issuing complete, correct access and environment requests in weeks 1 and 2. Everything after that is paced by internal lead times, so the weekly status note tracks each request from issue to grant as its own line. Internal teams leading the prerequisite work makes the eight-week plan the expected case rather than the best case; it does not make a shorter plan possible, because reconciling a full calendar month needs every connector live before that month starts.
 
 ## 9. Acceptance
 
@@ -163,7 +163,7 @@ A weekly written status note covers progress against the phases, open dependenci
 | Microsoft exposes no supported per-user credit history | Cowork credits stay a monthly snapshot | Labelled as such; revisit when Microsoft publishes a report API |
 | Bedrock caller identity does not name a person | Bedrock cost lands as unattributed | Discovery confirms how principals call Bedrock; request metadata or per-user roles if needed |
 | Billed cost and API usage do not tie out | Leaders question the figures | Reconciliation explains each difference; allocated figures labeled; confidence stated per platform |
-| Corporate proxy or TLS inspection blocks egress | Pulls fail inside CG | Proxy and corporate CA support built in; egress host list published per integration |
+| Corporate proxy or TLS inspection blocks egress | Pulls fail inside the corporate network | Proxy and corporate CA support built in; egress host list published per integration |
 | Figures read as Finance expense | Misuse of the dashboard | Standing caveat kept on every page and export; rates confirmed with Finance |
 
 ## 12. Security and data handling
@@ -173,12 +173,3 @@ The application is served over HTTPS only, behind the corporate TLS certificate.
 ## 13. Commercial terms
 
 Fees, invoicing schedule, payment terms, expenses and the engagement model (fixed fee or time and materials) are stated in the Trace3 order form that accompanies this statement of work. This document defines scope, deliverables and acceptance only. [ORDER FORM REFERENCE]
-
-## 14. Approval
-
-| | Capital Group | Trace3 |
-|---|---|---|
-| Name | [NAME] | [NAME] |
-| Title | [TITLE] | [TITLE] |
-| Signature | | |
-| Date | | |
