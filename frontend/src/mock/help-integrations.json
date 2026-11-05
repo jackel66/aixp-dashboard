@@ -1,0 +1,274 @@
+{
+  "rows": [
+    {
+      "id": "powerbi",
+      "name": "Power BI (semantic model)",
+      "status": "built",
+      "kind": "source",
+      "summary": "Pulls the Usage, People and lookup tables from the AI Platform Economics semantic model through the Power BI REST API, chunked by month.",
+      "urls": [
+        {
+          "label": "Token endpoint",
+          "value": "https://login.microsoftonline.com/<tenant id>/oauth2/v2.0/token"
+        },
+        {
+          "label": "Power BI API",
+          "value": "https://api.powerbi.com/v1.0/myorg/groups/<workspace id>/datasets/<dataset id>/executeQueries"
+        },
+        {
+          "label": "Dataset discovery",
+          "value": "https://api.powerbi.com/v1.0/myorg/groups/<workspace id>/datasets"
+        }
+      ],
+      "ports": "Outbound HTTPS (TCP 443) from the dashboard server to the hosts listed. No inbound port is needed by the vendor; the dashboard itself listens on its own port (3090 by default) for users. Hosts: login.microsoftonline.com and api.powerbi.com.",
+      "credentials": [
+        "Service principal: an Entra app registration with a client secret (tenant id, client id, client secret). No delegated permission is needed; the Power BI API scope is https://analysis.windows.net/powerbi/api/.default.",
+        "Or a pasted user bearer token for a first test (expires in about an hour)."
+      ],
+      "permissions": [
+        "Fabric tenant setting \"Service principals can use Fabric APIs\" must allow the app (or a security group it is in). A Fabric administrator sets it.",
+        "The service principal must be a Member or Contributor of the workspace that holds the semantic model. A workspace admin adds it.",
+        "Queries run as the principal; row-level security on the model applies to it."
+      ],
+      "limits": [
+        "One executeQueries call returns at most 100,000 rows and 15 MB, so Usage is pulled one month at a time and split by platform or half month when a slice hits the cap.",
+        "At most 4 queries in flight; 429 and 5xx are retried three times."
+      ],
+      "where": "Settings > Data source > Power BI. Test connection shows auth, workspace, dataset and table checks.",
+      "notes": [
+        "The pull replaces the whole dataset (usage, people, lookups) each time; vendor connectors copy people and lookups from the last pull."
+      ]
+    },
+    {
+      "id": "ad",
+      "name": "Active Directory sign-in",
+      "status": "built",
+      "kind": "identity",
+      "summary": "Domain users sign in with their own password; roles and data scopes can be assigned to AD groups and organizational units.",
+      "urls": [
+        {
+          "label": "Domain controllers",
+          "value": "Discovered from DNS SRV records _ldap._tcp.dc._msdcs.<domain> and _ldap._tcp.<domain>, or listed under Advanced."
+        },
+        {
+          "label": "Base DN",
+          "value": "Derived from the domain (dc=a,dc=b) and confirmed against the RootDSE defaultNamingContext."
+        }
+      ],
+      "ports": "Outbound LDAPS (TCP 636) from the dashboard server to every domain controller it may use, or StartTLS on TCP 389. Plain LDAP on 389 is refused by the domain controller for authenticated binds when LDAP signing is required, and passwords would cross the wire unencrypted. DNS (UDP/TCP 53) for SRV discovery.",
+      "credentials": [
+        "One ordinary domain account that can read the directory (the service account), typed as name, DOMAIN\\name or name@domain, plus its password. No admin rights.",
+        "Users bind as themselves at sign-in; the dashboard never stores their passwords."
+      ],
+      "permissions": [
+        "The service account needs read access to user objects, group membership (nested groups are resolved with the LDAP matching rule 1.2.840.113556.1.4.1941) and organizational units. Default domain users have this.",
+        "Each domain controller needs a server certificate for LDAPS or StartTLS. The certificate chain must be trusted by the dashboard server, or the CA certificate is pasted under Advanced, or certificate verification is switched off (not recommended)."
+      ],
+      "limits": [
+        "Connect timeout 8 seconds, operation timeout 30 seconds, paged searches of 500 objects.",
+        "Group membership is refreshed at each sign-in and by the directory sync (every 60 minutes by default)."
+      ],
+      "where": "Settings > Active Directory. Save and test shows dns, connect, bind, base_dn, users, groups and ous.",
+      "notes": [
+        "AD users need a role reached through themselves, a group or an OU before they can sign in, and a data scope or the data.all permission before they see data."
+      ]
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic Claude Enterprise",
+      "status": "built",
+      "kind": "vendor",
+      "summary": "Pulls per-user, per-model, per-product tokens, requests and USD from the Claude Enterprise Analytics API, daily.",
+      "urls": [
+        {
+          "label": "API base",
+          "value": "https://api.anthropic.com"
+        },
+        {
+          "label": "Cost",
+          "value": "GET /v1/organizations/analytics/cost"
+        },
+        {
+          "label": "Usage",
+          "value": "GET /v1/organizations/analytics/usage"
+        },
+        {
+          "label": "Teams (optional)",
+          "value": "GET /v1/organizations/rbac_groups and /rbac_groups/{id}/members"
+        },
+        {
+          "label": "Key creation",
+          "value": "https://claude.ai/admin-settings/api-access (Organization settings > API)"
+        }
+      ],
+      "ports": "Outbound HTTPS (TCP 443) from the dashboard server to the hosts listed. No inbound port is needed by the vendor; the dashboard itself listens on its own port (3090 by default) for users. Host: api.anthropic.com.",
+      "credentials": [
+        "An Analytics API key (prefix sk-ant-api01-) created by the primary owner of the Claude Enterprise parent organization. Public API access must be enabled for the organization first.",
+        "Console Admin keys (sk-ant-admin01-) are a different key type and do not work for the Enterprise analytics endpoints."
+      ],
+      "permissions": [
+        "Scope read:analytics on the key (fixed at creation; add a scope by creating a new key).",
+        "Scope read:rbac_groups to map teams to lines of business (optional; without it team mapping is skipped and the pull still works).",
+        "Headers sent: x-api-key, anthropic-version (2026-10-21 by default) and anthropic-beta: analytics-usage-cost-2026-08-24."
+      ],
+      "limits": [
+        "Data is available from 2026-01-01 and no more than 365 days back. Each request covers at most 31 days; the connector slices the window.",
+        "Rate limit 60 requests a minute for the organization; the connector paces calls one second apart.",
+        "Usage appears within about 4 hours (up to 24) and can change until about 7 days after month end, so the last 9 days are pulled again each run.",
+        "Amounts are post-discount, pre-credit, in fractional cents; the list price is kept beside them. On a seat-based plan the cost figures are usage credits only, not seat fees (unverified for CG)."
+      ],
+      "where": "Settings > Data source > Vendor connectors > Anthropic Claude Enterprise. Test connection checks the key, cost data, usage data, groups, freshness and the history floor.",
+      "notes": [
+        "Rows are matched to People by email. A person the extract does not have lands in Unmatched unless a team mapping under LOB-CG map > Vendor orgs supplies a line of business.",
+        "Usage with no person attached (for example Claude Tag in Slack channels) is reported as unattributed."
+      ]
+    },
+    {
+      "id": "github",
+      "name": "GitHub Copilot",
+      "status": "planned",
+      "kind": "vendor",
+      "summary": "Planned connector. Credits per user per model per day come from the Copilot metrics user report; dollars per user need the premium request usage endpoint per user or an allocation of the daily billing usage.",
+      "urls": [
+        {
+          "label": "API base",
+          "value": "https://api.github.com"
+        },
+        {
+          "label": "Daily per-user metrics report",
+          "value": "GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=YYYY-MM-DD (returns download links to NDJSON)"
+        },
+        {
+          "label": "Premium request usage",
+          "value": "GET /enterprises/{enterprise}/settings/billing/premium_request/usage?user=<login> (also /organizations/{org}/... and /users/{username}/...)"
+        },
+        {
+          "label": "Billing usage",
+          "value": "GET /enterprises/{enterprise}/settings/billing/usage?year=&month=&day=&cost_center_id="
+        },
+        {
+          "label": "Seats",
+          "value": "GET /orgs/{org}/copilot/billing/seats"
+        },
+        {
+          "label": "Cost centers",
+          "value": "GET /enterprises/{enterprise}/settings/billing/cost-centers"
+        }
+      ],
+      "ports": "Outbound HTTPS (TCP 443) from the dashboard server to the hosts listed. No inbound port is needed by the vendor; the dashboard itself listens on its own port (3090 by default) for users. Hosts: api.github.com and the report download host it returns (objects.githubusercontent.com or similar).",
+      "credentials": [
+        "A GitHub App installed on the enterprise (15,000 requests an hour) or a fine-grained personal access token of an enterprise owner (5,000 an hour)."
+      ],
+      "permissions": [
+        "Enterprise billing read (enterprise owner, billing manager or a custom role with billing read) for the billing and premium request usage endpoints.",
+        "Copilot metrics read: classic scopes manage_billing:copilot, read:enterprise or read:org, or the fine-grained \"View Enterprise Copilot Metrics\" permission.",
+        "Organization owner (or Administration read) for the seats endpoint.",
+        "Exact fine-grained permission names for enterprise billing were not stated on the pages read (unverified)."
+      ],
+      "limits": [
+        "Metrics reports start 2025-10-10, are kept one year and are available two full UTC days after the day closes.",
+        "Premium request usage covers 24 months but is one call per user per window, so a 500-user estate over 90 days is thousands of calls.",
+        "Billing usage rows are per day, product, SKU and organization, not per user. Usernames carry an EMU suffix (_capgroup) that the loader strips."
+      ],
+      "where": "Not built yet. It will appear under Settings > Data source > Vendor connectors.",
+      "notes": [
+        "Whether the API totals equal the CSV the customer downloads today is not established; a same-month side-by-side pull comes first."
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI (API platform and ChatGPT Enterprise)",
+      "status": "planned",
+      "kind": "vendor",
+      "summary": "Planned connector. Two surfaces: the API platform organization usage and costs, and the ChatGPT Enterprise per-user credits that the current CSV carries.",
+      "urls": [
+        {
+          "label": "API platform base",
+          "value": "https://api.openai.com"
+        },
+        {
+          "label": "Usage",
+          "value": "GET /v1/organization/usage/completions (group_by user_id, model; bucket_width 1d)"
+        },
+        {
+          "label": "Costs",
+          "value": "GET /v1/organization/costs (group_by user_id or project_id; no model dimension)"
+        },
+        {
+          "label": "Users",
+          "value": "GET /v1/organization/users (user_id to email)"
+        },
+        {
+          "label": "ChatGPT Enterprise compliance API",
+          "value": "https://api.chatgpt.com/v1/compliance/{workspaces|organizations}/{id}/logs"
+        },
+        {
+          "label": "ChatGPT Enterprise per-user costs",
+          "value": "Route not published; a workspace Admin key with \"Compliance logging platform > Costs > Read\" is described by a third party (unverified)."
+        }
+      ],
+      "ports": "Outbound HTTPS (TCP 443) from the dashboard server to the hosts listed. No inbound port is needed by the vendor; the dashboard itself listens on its own port (3090 by default) for users. Hosts: api.openai.com and api.chatgpt.com.",
+      "credentials": [
+        "API platform: an Admin API key created by an organization owner at platform.openai.com > Settings > Organization > Admin keys.",
+        "ChatGPT Enterprise: a workspace Admin key (prefix sk-admin-) created in the Global Admin Console under Credentials > Admin keys, or a Compliance API key for the logs endpoint."
+      ],
+      "permissions": [
+        "Admin key for the usage, costs and users endpoints (scopes not documented on the pages read; unverified).",
+        "Compliance logging platform > Costs > Read at organization level for per-user credit and estimated cost rows (unverified)."
+      ],
+      "limits": [
+        "Costs have no model dimension, so per-model dollars per user would be an allocation by token share.",
+        "ChatGPT Enterprise per-user rows are hourly, kept 30 days with no backfill, with dollars estimated at list rate per credit (not billed amounts).",
+        "Rate limits, lag, revisions and history depth of the API platform endpoints were not stated on the pages read."
+      ],
+      "where": "Not built yet.",
+      "notes": [
+        "No official USD price per ChatGPT Enterprise credit was found; the contract rate stays a setting."
+      ]
+    },
+    {
+      "id": "cowork",
+      "name": "Microsoft Copilot Cowork (Copilot credits)",
+      "status": "planned",
+      "kind": "vendor",
+      "summary": "Planned connector. Copilot credits per user are reported in the Microsoft 365 admin center; the API surface is thin and delegated-only.",
+      "urls": [
+        {
+          "label": "Graph reports",
+          "value": "https://graph.microsoft.com/v1.0/reports/getMicrosoft365CopilotUsageUserDetail(period='D30') (licensed users, no credits)"
+        },
+        {
+          "label": "Copilot cost management (beta)",
+          "value": "https://graph.microsoft.com/beta/copilot/costManagement/userBalances/{userId} (consumed credits per user, no date parameter, delegated only)"
+        },
+        {
+          "label": "Credits report",
+          "value": "Microsoft 365 admin center > Reports > Usage > Microsoft 365 Copilot > Credits (7 or 30 days, CSV, no API)"
+        },
+        {
+          "label": "Pay-as-you-go meters",
+          "value": "Azure Cost Management (meter per Copilot credit, USD 0.01 list)"
+        }
+      ],
+      "ports": "Outbound HTTPS (TCP 443) from the dashboard server to the hosts listed. No inbound port is needed by the vendor; the dashboard itself listens on its own port (3090 by default) for users. Hosts: login.microsoftonline.com, graph.microsoft.com and management.azure.com.",
+      "credentials": [
+        "An Entra app registration with a client secret for the Graph reports (application permission).",
+        "The beta cost management endpoint accepts delegated permissions only, so a signed-in admin user (device code or auth code flow) is needed for per-user credits; a service account cannot do it app-only."
+      ],
+      "permissions": [
+        "Reports.Read.All (application) for the Copilot usage reports; a reports reader or global reader role for delegated reads.",
+        "CopilotCostManagement.* delegated permissions for user balances (exact names unverified).",
+        "Cost Management Reader on the Azure subscription or billing account for the pay-as-you-go meter (role name unverified)."
+      ],
+      "limits": [
+        "The admin center credits report shows the past 7 or 30 days and conceals user names by default (a tenant setting unconceals them).",
+        "No API returns USD; the dashboard computes credits x a configured rate. 0.01 is the pay-as-you-go list price per credit; 0.008 matches the prepaid pack (25,000 credits for 200 USD).",
+        "Which admin page produced the current \"Monthly credits used\" export is still to be confirmed with CG."
+      ],
+      "where": "Not built yet.",
+      "notes": [
+        "The Cowork usage report (tasks, active days) has no credits column; the credits report has no task detail."
+      ]
+    }
+  ]
+}

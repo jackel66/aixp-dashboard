@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { RequirementsFold } from '../help/IntegrationBlocks.jsx';
 import { Link } from 'react-router-dom';
 import DataState from '../DataState.jsx';
 import Button from '../ui/Button.jsx';
@@ -297,6 +298,7 @@ function Form({ s, status, reloadStatus }) {
             {!canAct && <span className="t-small text-muted self-center">Save changes before testing or pulling.</span>}
           </div>
         )}
+        <RequirementsFold id="powerbi" />
         {on && <p className="t-small text-muted m-0" style={{ marginTop: 12 }}>The tenant setting "Service principals can use Fabric APIs" must allow this app. The service principal also needs the Member or Contributor role on the workspace.</p>}
       </SectionCard>
 

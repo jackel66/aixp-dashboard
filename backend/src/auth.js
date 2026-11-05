@@ -28,11 +28,12 @@ function clearCookie(req, res) {
   res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${isSecure(req) ? '; Secure' : ''}`);
 }
 
-// Enforcement table: first match wins. keys null = open to anyone. A rule with several keys needs all
+// Enforcement table: first match wins. keys null = open to anyone, keys [] = any signed-in user. A rule with several keys needs all
 // of them. Paths are relative to /api. Matching is case-insensitive because Express routes are.
 const RULES = [
   { test: (m, p) => (m === 'GET' || m === 'HEAD') && /^\/health\/?$/i.test(p), keys: null },
   { test: (m, p) => /^\/auth(\/|$)/i.test(p), keys: null },
+  { test: (m, p) => m === 'GET' && /^\/help(\/|$)/i.test(p), keys: [] },
   { test: (m, p) => m === 'GET' && /^\/events\/?$/i.test(p), keys: ['dashboard.view'] },
   { test: (m, p) => /^\/access(\/|$)/i.test(p), keys: ['access.manage'] },
   { test: (m, p) => /^\/settings(\/|$)/i.test(p), keys: ['settings.manage'] },

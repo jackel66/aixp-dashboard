@@ -14,6 +14,7 @@ export default function Footer() {
             <Link to="/overview" className="text-muted">Overview</Link>
             <Link to="/data-quality" className="text-muted">Data quality</Link>
             {(can('settings.manage') || can('data.manage') || can('access.manage')) && <Link to="/settings" className="text-muted">Settings</Link>}
+            <Link to="/help" className="text-muted">Help</Link>
             <Link to="/diagnostics" className="text-muted">Diagnostics</Link>
           </nav>
         </div>

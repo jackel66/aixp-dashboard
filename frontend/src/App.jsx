@@ -17,6 +17,7 @@ import DataQualityPage from './pages/DataQualityPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import ReportsPage from './pages/ReportsPage.jsx';
 import ReportPage from './pages/ReportPage.jsx';
+import HelpPage from './pages/HelpPage.jsx';
 import { useAuth, AccessWatcher } from './lib/auth.jsx';
 
 function Placeholder({ title }) {
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/overview" element={<OverviewPage />} />
                 <Route path="/platforms" element={<Navigate to="/platforms/anthropic" replace />} />
                 <Route path="/platforms/:id" element={<PlatformPage />} />
+                <Route path="/help" element={<HelpPage />} />
                 <Route path="/diagnostics" element={<DiagnosticsPage />} />
                 {/* // D routes - Builder D swaps these placeholders for the real pages, nothing else in this file */}
                 <Route path="/organization" element={<OrganizationPage />} />

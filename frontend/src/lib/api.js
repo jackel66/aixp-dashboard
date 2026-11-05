@@ -10,6 +10,7 @@ function mockName(path, params) {
   if (m) return 'platform-' + m[1];
   if (/^access\/roles\/\d+\/assignments$/.test(p)) return 'access-roles-assignments';
   if (/^vendor-orgs\/\d+\/people$/.test(p)) return 'vendor-orgs-people';
+  if (/^help\/integrations\/[a-z_]+$/.test(p)) return 'help-integrations-one';
   return p.replace(/\//g, '-');
 }
 
@@ -82,6 +83,12 @@ async function mockRequest(method, path, body) {
       (all[t] || []).forEach((r) => { if (!q || JSON.stringify(r).toLowerCase().includes(q)) rows.push(r); });
     });
     return { rows };
+  }
+  if (name === 'help-integrations-one') {
+    const all = await mockFile('help-integrations');
+    const hit = all.rows.find((r) => r.id === bare.split('/').pop());
+    if (!hit) { const err = new Error('Integration not found'); err.status = 404; throw err; }
+    return hit;
   }
   return mockFile(name);
 }

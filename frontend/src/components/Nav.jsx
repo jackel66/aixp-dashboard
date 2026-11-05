@@ -122,6 +122,10 @@ export default function Nav() {
           {live}
         </span>
         <ThemeToggle />
+        <NavLink to="/help" className="nav-link" aria-label="Help">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6" /><path d="M6.2 6.3a1.9 1.9 0 013.6.7c0 1.2-1.8 1.5-1.8 2.6 M8 11.6v.4" /></svg>
+          <span className="t-small hidden lg:inline">Help</span>
+        </NavLink>
         {showSettings && <NavLink to="/settings" className="nav-link" aria-label="Settings">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="8" cy="8" r="2.2" />

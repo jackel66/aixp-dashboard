@@ -25,6 +25,7 @@ function mountRoutes(api) {
   api.use('/vendors', require('./routes/vendors'));
   api.use('/access', require('./routes/access'));
   api.use('/vendor-orgs', require('./routes/vendorOrgs'));
+  api.use('/help', require('./routes/help'));
 }
 
 function createApp() {

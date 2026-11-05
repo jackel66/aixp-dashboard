@@ -93,6 +93,8 @@ builder B as routes land. Every error is {error: "message"} with an HTTP status.
 | GET | /api/vendor-orgs/:id/people | {rows: [{person_key, email, display_name, in_extract, extract_lob_cg}]} |
 | POST | /api/vendor-orgs/apply | re-matches unmapped, exact and normalized rows, adds vendor-origin people to the active dataset, rebuilds rollups; returns {mapped, unmatched, people_unmatched, re_matched, people_created, usage_rows_matched} |
 | GET | /api/vendor-orgs/export.csv | query vendor; one row per vendor org value |
+| GET | /api/help/integrations | any signed-in user (no permission key); {rows: [{id, name, status 'built' or 'planned', kind 'source', 'identity' or 'vendor', summary, urls: [{label, value}], ports, credentials: [string], permissions: [string], limits: [string], where, notes: [string]}]}; static catalogue from services/integrationHelp.js |
+| GET | /api/help/integrations/:id | one entry in the same shape; 404 unknown id; 401 signed out |
 
 Every mutation writes an auth_events row (kind org_map_changed) and broadcasts settings.changed {keys: ['vendor_orgs']}. /api/users rows and /api/users/:key person carry origin ('extract' or 'vendor'); dataset counts carry people_vendor.
 | GET | /api/export/:report.csv | report = summary, trend, platform (needs platform=<id>), organization, models, users; first line is "# " + caveat; text cells starting with = + - @ get a leading apostrophe; consumption always has a unit column |

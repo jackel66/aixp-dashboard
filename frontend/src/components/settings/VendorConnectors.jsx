@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { RequirementsFold } from '../help/IntegrationBlocks.jsx';
 import DataState from '../DataState.jsx';
 import Button from '../ui/Button.jsx';
 import Chip from '../ui/Chip.jsx';
@@ -134,6 +135,7 @@ function ConnectorCard({ c, s, last, busy, onPull }) {
           </Field>
         </div>
       </details>
+      {c.id === 'anthropic' && <RequirementsFold id="anthropic" />}
       <p className="t-small text-muted m-0">The primary owner of the Enterprise organization creates the Analytics key at claude.ai under Organization settings, API. The key needs the read:analytics scope, and read:rbac_groups adds team mapping.</p>
       <div className="flex gap-2 flex-wrap items-center" style={{ marginTop: 16 }}>
         <Button variant="secondary" onClick={runTest} disabled={testing || dirty}>{testing ? 'Testing' : 'Test connection'}</Button>

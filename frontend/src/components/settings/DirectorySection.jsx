@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RequirementsFold } from '../help/IntegrationBlocks.jsx';
 import DataState from '../DataState.jsx';
 import Card from '../charts/Card.jsx';
 import Button from '../ui/Button.jsx';
@@ -151,6 +152,7 @@ function Form({ data, reload }) {
             </Field>
           </div>
         </details>
+        <RequirementsFold id="ad" />
         {!valid && <p className="t-small m-0" style={{ marginTop: 8, color: 'var(--fail)' }}>{f.enabled && !(f.domain.trim() && f.bind_user.trim()) ? 'Enter the domain and the service account to enable Active Directory.' : 'Sync minutes must be a whole number from 5 to 1440.'}</p>}
         {dirty && <p className="t-small text-muted m-0" style={{ marginTop: 8 }}>Save and test saves your changes first, then checks each step: DNS, connect, sign-in, base DN and counts. The test names the step that failed.</p>}
       </SectionCard>
