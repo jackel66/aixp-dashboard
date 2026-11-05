@@ -27,10 +27,12 @@
   --p-openai: #eb6834;
   --p-github: #1baf7a;
   --p-cowork: #eda100;
+  --p-bedrock: #8a5cd6;
   --p-anthropic-soft: color-mix(in srgb, var(--p-anthropic) 16%, var(--bg-1));
   --p-openai-soft: color-mix(in srgb, var(--p-openai) 16%, var(--bg-1));
   --p-github-soft: color-mix(in srgb, var(--p-github) 16%, var(--bg-1));
   --p-cowork-soft: color-mix(in srgb, var(--p-cowork) 18%, var(--bg-1));
+  --p-bedrock-soft: color-mix(in srgb, var(--p-bedrock) 16%, var(--bg-1));
   --shadow-1: 0 1px 2px rgba(11, 11, 11, 0.06), 0 1px 3px rgba(11, 11, 11, 0.05);
   --shadow-2: 0 4px 14px rgba(11, 11, 11, 0.12), 0 2px 4px rgba(11, 11, 11, 0.06);
   --card-border: transparent;
@@ -56,6 +58,7 @@
   --p-openai: #d95926;
   --p-github: #199e70;
   --p-cowork: #c98500;
+  --p-bedrock: #a07fe3;
   --shadow-1: none;
   --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
   --card-border: var(--line);
@@ -82,6 +85,7 @@
     --p-openai: #d95926;
     --p-github: #199e70;
     --p-cowork: #c98500;
+    --p-bedrock: #a07fe3;
     --shadow-1: none;
     --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.5);
     --card-border: var(--line);
@@ -110,10 +114,12 @@
   --color-p-openai: var(--p-openai);
   --color-p-github: var(--p-github);
   --color-p-cowork: var(--p-cowork);
+  --color-p-bedrock: var(--p-bedrock);
   --color-p-anthropic-soft: var(--p-anthropic-soft);
   --color-p-openai-soft: var(--p-openai-soft);
   --color-p-github-soft: var(--p-github-soft);
   --color-p-cowork-soft: var(--p-cowork-soft);
+  --color-p-bedrock-soft: var(--p-bedrock-soft);
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Sora", "Inter", ui-sans-serif, system-ui, sans-serif;
 }

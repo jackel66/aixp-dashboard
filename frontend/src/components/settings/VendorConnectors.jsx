@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RequirementsFold } from '../help/IntegrationBlocks.jsx';
+import { Link } from 'react-router-dom';
 import Button from '../ui/Button.jsx';
 import Chip from '../ui/Chip.jsx';
 import Dialog from '../ui/Dialog.jsx';
@@ -241,7 +241,7 @@ function ConnectorCard({ c, s, last, busy, onPull }) {
           <div className="grid gap-x-4" style={{ ...GRID, marginTop: 8 }}>{advanced.map(render)}</div>
         </details>
       )}
-      <RequirementsFold id={c.id} />
+      <p className="t-small text-muted m-0" style={{ marginBottom: 8 }}>Addresses, ports and permissions are on the <Link to={'/help?tab=' + c.id}>Help page</Link>.</p>
       {(d.help || []).map((h, i) => <p key={i} className="t-small text-muted m-0" style={{ marginBottom: 4 }}>{h}</p>)}
       <div className="flex gap-2 flex-wrap items-center" style={{ marginTop: 16 }}>
         <Button variant="secondary" onClick={runTest} disabled={testing || dirty}>{testing ? 'Testing' : 'Test connection'}</Button>
