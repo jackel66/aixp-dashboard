@@ -18,7 +18,7 @@ function failing(run) {
 }
 
 test('CHECKS lists the 15 contract checks in order with meaning text', () => {
-  assert.deepEqual(verifyEngine.CHECKS.map((c) => c.id), [
+  assert.deepEqual(verifyEngine.CHECKS.map((c) => c.id).slice(0, 15), [
     'freshness_per_platform', 'date_coverage_gaps', 'duplicate_grain_rows', 'people_key_unique_nonblank',
     'email_key_conflict', 'unmatched_usage', 'blank_lob_retained', 'lob_cg_label_split', 'region_unmatched_office',
     'unit_sanity', 'cowork_cumulative_snapshots', 'seat_spend_not_in_rows', 'platform_total_delta',

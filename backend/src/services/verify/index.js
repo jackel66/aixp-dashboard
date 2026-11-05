@@ -16,6 +16,9 @@ const checks = [
   require('./platform_total_delta'),
   require('./attribution_before_after'),
   require('./people_duplicate_lookup_growth'),
+  require('./vendor_coverage'),
+  require('./vendor_org_unmatched'),
+  require('./vendor_org_disagreement'),
 ];
 
 const CHECKS = checks.map((c) => ({

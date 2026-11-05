@@ -717,7 +717,7 @@ function users(query, scope, opts = {}) {
   const pivots = ids.map((id) => `sum(CASE WHEN pd.platform = '${id}' THEN pd.cost_usd ELSE 0 END) AS u_${id}`).join(', ');
   const all = ctx.db.prepare(
     `SELECT pd.person_key, sum(pd.cost_usd) AS usd, count(DISTINCT CASE WHEN ${M.ACT} THEN pd.date END) AS active_days,
-       ${pivots}, p.display_name, p.lob_cg, p.region, p.sbl, p.person_type, (p.person_key IS NOT NULL) AS matched
+       ${pivots}, p.display_name, p.lob_cg, p.region, p.sbl, p.person_type, p.origin, (p.person_key IS NOT NULL) AS matched
      FROM rollup_person_day pd LEFT JOIN people p ON p.dataset_id = pd.dataset_id AND p.person_key = pd.person_key
      WHERE pd.dataset_id = ? AND pd.date BETWEEN ? AND ? AND pd.platform IN (${inList(ids)})${where}
      GROUP BY pd.person_key`
@@ -727,7 +727,7 @@ function users(query, scope, opts = {}) {
     for (const id of ids) plat[id] = round2(r[`u_${id}`]);
     return {
       person_key: r.person_key, display_name: r.display_name || r.person_key, lob_cg: r.lob_cg || 'Unmatched usage',
-      region: r.region || 'Unknown', sbl: r.sbl || 'Unknown', person_type: r.person_type || 'Unknown', matched: r.matched ? 1 : 0,
+      region: r.region || 'Unknown', sbl: r.sbl || 'Unknown', person_type: r.person_type || 'Unknown', matched: r.matched ? 1 : 0, origin: r.origin || 'extract',
       usd: round2(r.usd), platforms: plat, active_days: r.active_days,
     };
   });
@@ -791,7 +791,7 @@ function userDetail(rawKey, query, scope, opts) {
       user_id: person ? person.user_id || '' : '', lob_cg: person ? person.lob_cg : 'Unmatched usage',
       region: person ? person.region : 'Unknown', sbl: person ? person.sbl : 'Unknown',
       office_code: person ? person.office_code || '' : '', person_type: person ? person.person_type : 'Unknown',
-      matched: person ? 1 : 0,
+      matched: person ? 1 : 0, origin: person ? person.origin || 'extract' : 'extract',
     },
     spend: { usd: round2(per.reduce((a, r) => a + num(r.usd), 0)) },
     platforms: per.map((r) => ({ id: r.platform, usd: round2(r.usd), consumption: cons(r.platform, r.cons), active_days: r.days })),

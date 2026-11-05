@@ -78,7 +78,7 @@ export default function UsersPage() {
 
   const columns = [
     { key: 'name', label: 'User', sortable: true, render: (r) => <span>{r.display_name || r.person_key}</span> },
-    { key: 'lob_cg', label: 'LOB-CG', sortable: true, render: (r) => (r.matched === 0 ? <Chip tone="outline">Unmatched</Chip> : r.lob_cg) },
+    { key: 'lob_cg', label: 'LOB-CG', sortable: true, render: (r) => (r.matched === 0 ? <Chip tone="outline">Unmatched</Chip> : <span>{r.lob_cg}{r.origin === 'vendor' && <Chip tone="outline" className="ml-2" title="This person is not in the extract. The LOB-CG comes from the vendor org mapping.">LOB from vendor org</Chip>}</span>) },
     { key: 'region', label: 'Region', render: (r) => r.region },
     { key: 'sbl', label: 'SBL', render: (r) => r.sbl },
     { key: 'person_type', label: 'Type', render: (r) => r.person_type },

@@ -9,6 +9,7 @@ function mockName(path, params) {
   const m = p.match(/^platforms\/([^/]+)$/);
   if (m) return 'platform-' + m[1];
   if (/^access\/roles\/\d+\/assignments$/.test(p)) return 'access-roles-assignments';
+  if (/^vendor-orgs\/\d+\/people$/.test(p)) return 'vendor-orgs-people';
   return p.replace(/\//g, '-');
 }
 
@@ -61,6 +62,8 @@ async function mockRequest(method, path, body) {
   if (bare === '/auth/logout') { mockOut(true); return { ok: true }; }
   if (bare === '/health') return { ok: true, buildId: 'mock', mock: true };
   if (method === 'POST' && bare === '/access/directory/test') return mockFile('access-directory-test');
+  if (method === 'POST' && /^\/vendors\/[a-z_]+\/test$/.test(bare)) return mockFile('vendors-test');
+  if (method === 'POST' && bare === '/vendor-orgs/apply') return { mapped: 4, unmatched: 1, people_unmatched: 17 };
   if (method === 'POST' && bare === '/access/directory/sync') return { users: 2, updated: 2, deactivated: 0, errors: [] };
   if (method !== 'GET') return { ok: true, mock: true };
   if (mockScopeMode() === 'none' && NO_SCOPE_PATHS.test(bare.replace(/^\/+/, ''))) {

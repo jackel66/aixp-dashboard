@@ -7,7 +7,7 @@ const { broadcast } = require('./events');
 const secrets = require('./secrets');
 
 // Keys stored encrypted. GET shows them as {set: bool}; server code uses getSecret().
-const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token', 'ad.bind_password']);
+const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token', 'ad.bind_password', 'anthropic.api_key']);
 
 const intRange = (name, lo, hi) => (v) => {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
@@ -40,6 +40,36 @@ const PBI_TABLE_KEYS = ['usage', 'people', 'seat_rate', 'region_map', 'lob_cg_ma
 const PBI_TABLE_NAME = /^[A-Za-z0-9 _.-]+$/;
 
 const VALIDATORS = {
+  'vendors.schedule': (v) => {
+    const t = text('vendors.schedule', 5)(v);
+    if (t && !/^([01]\d|2[0-3]):[0-5]\d$/.test(t)) throw badRequest('vendors.schedule must be blank or HH:MM (24 hour, Phoenix time)');
+    return t;
+  },
+  'vendors.auto_promote': bool('vendors.auto_promote'),
+  'vendors.months_back': intRange('vendors.months_back', 1, 60),
+  'vendors.last_pull_at': (v) => (v === null || v === '' ? null : text('vendors.last_pull_at', 40)(v)),
+  'vendors.last_pull': (v) => {
+    if (v === null) return null;
+    if (typeof v !== 'object' || Array.isArray(v)) throw badRequest('vendors.last_pull must be an object or null');
+    return v;
+  },
+  'anthropic.enabled': bool('anthropic.enabled'),
+  'anthropic.base_url': (v) => {
+    const t = text('anthropic.base_url', 300)(v).replace(/\/+$/, '');
+    if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest('anthropic.base_url must be an http or https URL');
+    return t;
+  },
+  'anthropic.anthropic_version': (v) => {
+    const t = text('anthropic.anthropic_version', 40, /^[A-Za-z0-9._-]+$/)(v);
+    if (!t) throw badRequest('anthropic.anthropic_version is required');
+    return t;
+  },
+  'anthropic.rebuild_days': intRange('anthropic.rebuild_days', 1, 31),
+  'anthropic.history_floor': (v) => {
+    const t = text('anthropic.history_floor', 10)(v);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t) || Number.isNaN(Date.parse(`${t}T00:00:00Z`))) throw badRequest('anthropic.history_floor must be a date (YYYY-MM-DD)');
+    return t;
+  },
   'ad.enabled': bool('ad.enabled'),
   'ad.domain': (v) => text('ad.domain', 253, /^[A-Za-z0-9._-]+$/)(v).toLowerCase(),
   'ad.bind_user': text('ad.bind_user', 256),

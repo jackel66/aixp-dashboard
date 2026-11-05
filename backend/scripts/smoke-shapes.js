@@ -36,6 +36,9 @@ const ROUTES = [
   ['settings', '/api/settings'],
   ['settings-seat-rates', '/api/settings/seat-rates'],
   ['settings-lob-cg-map', '/api/settings/lob-cg-map'],
+  ['vendor-orgs', '/api/vendor-orgs'],
+  ['vendors', '/api/vendors'],
+  ['vendors-detail', '/api/vendors/detail?vendor=anthropic'],
   ['access-permissions', '/api/access/permissions'],
   ['access-users', '/api/access/users'],
   ['access-roles', '/api/access/roles'],
@@ -225,7 +228,7 @@ async function scopedPass(adminResolved) {
     }).filter(([, r]) => r);
     // routes a scoped manager must NOT reach (permission or scope), and the status expected
     const denied = {
-      settings: 403, 'settings-seat-rates': 403, 'settings-lob-cg-map': 403, 'access-permissions': 403, 'access-users': 403,
+      settings: 403, 'settings-seat-rates': 403, 'settings-lob-cg-map': 403, 'vendor-orgs': 403, vendors: 403, 'access-permissions': 403, 'access-users': 403,
       'access-roles': 403, 'access-directory': 403, 'access-events': 403, 'verification-run': 403, 'organization-cell': 403,
     };
     // plus the report catalogue and the CSV exports

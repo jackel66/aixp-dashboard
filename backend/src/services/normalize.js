@@ -318,6 +318,8 @@ function normalize(datasetId) {
     db.prepare('UPDATE datasets SET counts_json = ? WHERE id = ?').run(JSON.stringify(cj), datasetId);
   });
   tx();
+  // Section 16.4: vendor-org people for usage keys the extract lacks (no-op when the vendor tables are empty).
+  try { require('./orgCorrelation').applyToDataset(datasetId); } catch (e) { console.warn(`[normalize] vendor org apply skipped: ${e.message}`); }
   return result.counts;
 }
 

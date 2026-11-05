@@ -34,6 +34,7 @@ async function main() {
   const app = createApp();
   const server = app.listen(port, () => console.log(`[server] listening on http://localhost:${port}`));
   require('./services/powerbiSchedule').start();
+  require('./services/vendorSchedule').start();
   require('./services/directorySync').start();
   server.on('error', (e) => { console.error('[server] failed to start:', e.message); process.exit(1); });
 }

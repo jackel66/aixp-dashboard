@@ -1,0 +1,42 @@
+{
+ "ok": false,
+ "duration_ms": 5230,
+ "steps": [
+  {
+   "key": "auth",
+   "ok": true,
+   "label": "Sign-in",
+   "detail": "Key accepted by the organization"
+  },
+  {
+   "key": "cost",
+   "ok": true,
+   "label": "Cost",
+   "detail": "812 rows for 2026-11-03, data refreshed 2026-11-04T06:12:00Z"
+  },
+  {
+   "key": "usage",
+   "ok": true,
+   "label": "Usage",
+   "detail": "812 rows for 2026-11-03"
+  },
+  {
+   "key": "groups",
+   "ok": false,
+   "label": "Groups",
+   "detail": "read:rbac_groups not granted, org mapping skipped"
+  },
+  {
+   "key": "freshness",
+   "ok": true,
+   "label": "Freshness",
+   "detail": "Data is 5.4 hours old"
+  },
+  {
+   "key": "floor",
+   "ok": true,
+   "label": "History floor",
+   "detail": "Data from 2026-01-01; first pull window 2026-01-01 to 2026-11-04"
+  }
+ ]
+}

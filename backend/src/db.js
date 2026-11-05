@@ -367,6 +367,59 @@ CREATE TABLE IF NOT EXISTS scope_grants (
   created_by INTEGER,
   UNIQUE (subject_type, user_id, ad_dn, dim, value)
 );
+-- section 16.4 (N)
+CREATE TABLE IF NOT EXISTS vendor_org_values (
+  id INTEGER PRIMARY KEY,
+  vendor TEXT NOT NULL,
+  value TEXT NOT NULL,
+  normalized TEXT NOT NULL DEFAULT '',
+  lob_cg TEXT,
+  match_method TEXT,
+  score REAL,
+  confirmed_by INTEGER,
+  confirmed_at TEXT,
+  first_seen_at TEXT,
+  last_seen_at TEXT,
+  people_count INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (vendor, value)
+);
+
+CREATE TABLE IF NOT EXISTS vendor_org_aliases (
+  id INTEGER PRIMARY KEY,
+  alias TEXT NOT NULL,
+  lob_cg TEXT NOT NULL,
+  created_by INTEGER,
+  created_at TEXT,
+  UNIQUE (alias)
+);
+
+CREATE TABLE IF NOT EXISTS vendor_org_people (
+  vendor TEXT NOT NULL,
+  person_key TEXT NOT NULL,
+  email TEXT,
+  display_name TEXT,
+  value TEXT NOT NULL,
+  seen_at TEXT,
+  PRIMARY KEY (vendor, person_key, value)
+);
+CREATE INDEX IF NOT EXISTS ix_vendor_org_people_key ON vendor_org_people(person_key);
+
+-- section 16.1 (M): vendor usage detail, keeps the product breakdown the usage grain cannot hold.
+CREATE TABLE IF NOT EXISTS vendor_usage_detail (
+  vendor TEXT NOT NULL,
+  date TEXT NOT NULL,
+  person_key TEXT NOT NULL,
+  email TEXT,
+  model TEXT NOT NULL DEFAULT '',
+  product TEXT NOT NULL DEFAULT '',
+  tokens REAL,
+  cost_usd REAL,
+  list_cost_usd REAL,
+  requests INTEGER,
+  pulled_at TEXT,
+  PRIMARY KEY (vendor, date, person_key, model, product)
+);
+CREATE INDEX IF NOT EXISTS ix_vendor_detail_person ON vendor_usage_detail(vendor, person_key, date);
 `;
 
 let db = null;
@@ -381,7 +434,9 @@ function hasColumn(table, col) {
 }
 
 // Hand ALTERs for columns added after the first release: [table, column, DDL type].
-const ALTERS = [];
+const ALTERS = [
+  ['people', 'origin', "TEXT NOT NULL DEFAULT 'extract'"], // section 16.4 (N)
+];
 
 function open() {
   const p = dbPath();

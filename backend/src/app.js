@@ -22,7 +22,9 @@ function mountRoutes(api) {
   api.use('/export', require('./routes/export'));
   api.use('/reports', require('./routes/reports'));
   api.use('/powerbi', require('./routes/powerbi'));
+  api.use('/vendors', require('./routes/vendors'));
   api.use('/access', require('./routes/access'));
+  api.use('/vendor-orgs', require('./routes/vendorOrgs'));
 }
 
 function createApp() {

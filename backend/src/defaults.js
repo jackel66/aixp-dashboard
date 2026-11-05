@@ -54,6 +54,18 @@ const DEFAULTS = {
   'powerbi.schedule': '',
   'powerbi.last_pull_at': null,
   'powerbi.last_pull': null,
+  // Vendor connectors (CONTRACT section 16.1). anthropic.api_key is stored encrypted; '' = not set.
+  'vendors.schedule': '',
+  'vendors.auto_promote': true,
+  'vendors.months_back': 13,
+  'vendors.last_pull_at': null,
+  'vendors.last_pull': null,
+  'anthropic.enabled': false,
+  'anthropic.api_key': '',
+  'anthropic.base_url': 'https://api.anthropic.com',
+  'anthropic.anthropic_version': '2026-10-21',
+  'anthropic.rebuild_days': 9,
+  'anthropic.history_floor': '2026-01-01',
   // Active Directory (CONTRACT section 14.5). ad.bind_password is stored encrypted.
   'ad.enabled': false,
   'ad.domain': '',

@@ -26,6 +26,11 @@ function parseJson(s, fallback) {
   try { return s ? JSON.parse(s) : fallback; } catch (e) { return fallback; }
 }
 
+// Section 16.4: people rows created from vendor orgs (origin 'vendor').
+function vendorPeople(id, db) {
+  return db.prepare("SELECT count(*) AS n FROM people WHERE dataset_id = ? AND origin = 'vendor'").get(id).n;
+}
+
 function shape(row, db) {
   if (!row) return null;
   const platforms = db
@@ -35,9 +40,9 @@ function shape(row, db) {
   if (!options.provider) options.provider = row.source === 'fixture' ? 'fixture' : 'import';
   return {
     provider: options.provider,
-    id: row.id, label: row.label, source: row.source, seed: row.seed, status: row.status, verdict: row.verdict,
+    id: row.id, label: row.label, source: row.source, seed: row.seed, status: row.status, verdict: row.verdict, note: row.note || null,
     created_at: row.created_at, verified_at: row.verified_at, promoted_at: row.promoted_at, archived_at: row.archived_at,
-    file_hash: row.file_hash, options, counts: parseJson(row.counts_json, {}),
+    file_hash: row.file_hash, options, counts: Object.assign(parseJson(row.counts_json, {}), { people_vendor: vendorPeople(row.id, db) }),
     note: row.note, platforms,
   };
 }

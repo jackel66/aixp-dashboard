@@ -79,7 +79,7 @@ test('every route answers with the contract keys', async () => {
 
   const u = await get('/api/users?pageSize=5');
   assert.equal(u.rows.length, 5);
-  assert.deepEqual(keys(u.rows[0]), ['active_days', 'display_name', 'lob_cg', 'matched', 'person_key', 'person_type', 'platforms', 'region', 'sbl', 'usd']);
+  assert.deepEqual(keys(u.rows[0]), ['active_days', 'display_name', 'lob_cg', 'matched', 'origin', 'person_key', 'person_type', 'platforms', 'region', 'sbl', 'usd']);
   const ud = await get(`/api/users/${encodeURIComponent(u.rows[0].person_key)}`);
   assert.deepEqual(keys(ud), ['activity', 'asOf', 'models', 'person', 'platforms', 'spend', 'trend']);
   assert.ok(ud.trend.length === 90 && ud.activity.length <= 50);

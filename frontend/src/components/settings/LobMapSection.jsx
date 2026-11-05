@@ -3,6 +3,7 @@ import DataState from '../DataState.jsx';
 import Button from '../ui/Button.jsx';
 import { SkeletonCard } from '../ui/Skeleton.jsx';
 import { SectionCard, useSaver } from './shared.jsx';
+import VendorOrgsCard from './VendorOrgsCard.jsx';
 import { useQuery } from '../../lib/query.js';
 import { api } from '../../lib/api.js';
 
@@ -52,5 +53,10 @@ function Form({ data }) {
 
 export default function LobMapSection() {
   const q = useQuery('/settings/lob-cg-map', {});
-  return <DataState q={q} skeleton={<SkeletonCard height={300} />}>{(d) => <Form data={d} />}</DataState>;
+  return (
+    <div className="stack-32">
+      <DataState q={q} skeleton={<SkeletonCard height={300} />}>{(d) => <Form data={d} />}</DataState>
+      <VendorOrgsCard />
+    </div>
+  );
 }

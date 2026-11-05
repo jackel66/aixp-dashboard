@@ -1,0 +1,21 @@
+{
+ "connectors": [
+  {
+   "id": "anthropic",
+   "label": "Anthropic Claude Enterprise",
+   "platform": "anthropic",
+   "enabled": false,
+   "configured": false,
+   "problems": [
+    "anthropic.api_key"
+   ]
+  }
+ ],
+ "schedule": "",
+ "auto_promote": true,
+ "months_back": 13,
+ "running": false,
+ "last_pull_at": null,
+ "last_pull": null,
+ "next_run_at": null
+}

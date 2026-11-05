@@ -9,8 +9,8 @@ const datasets = require('./datasets');
 const { broadcast } = require('./events');
 const time = require('./time');
 const { conflict, badRequest, HttpError } = require('../errors');
-
-let running = false;
+const { activeCopy } = require('./activeCopy');
+const importLock = require('./importLock');
 
 const isDax = (s) => /^evaluate\b/i.test(String(s || '').trim());
 const tq = (name) => `'${String(name).replace(/'/g, "''")}'`; // quoted DAX table name
@@ -21,7 +21,8 @@ function progress(stage, extra) {
   broadcast('import.progress', Object.assign({ stage, table: null, chunk: null, rows: null, message: '' }, extra || {}));
 }
 
-function isRunning() { return running; }
+// True while ANY import (Power BI or vendor) holds the shared lock.
+function isRunning() { return importLock.isBusy(); }
 
 // ---- configuration -----------------------------------------------------------------------
 
@@ -200,37 +201,6 @@ async function pullWhole(name, label) {
   return rows;
 }
 
-// ---- lookup rows copied from the active dataset when a table name is blank ----------------
-
-function activeCopy(key) {
-  const a = datasets.active();
-  if (!a) return [];
-  const db = getDb();
-  if (key === 'seat_rate') {
-    return db.prepare('SELECT platform, month, rate_usd, licensed_seats FROM seat_rate WHERE dataset_id = ?').all(a.id)
-      .map((r) => ({ Platform: r.platform, Month: r.month, RateUSD: r.rate_usd, LicensedSeats: r.licensed_seats }));
-  }
-  if (key === 'region_map') {
-    return db.prepare('SELECT office_code, region FROM region_map WHERE dataset_id = ?').all(a.id)
-      .map((r) => ({ OfficeCode: r.office_code, Region: r.region }));
-  }
-  if (key === 'lob_cg_map') {
-    return db.prepare('SELECT job_function, u_lob_2, lob_cg, lob_cg_sort FROM lob_cg_map WHERE dataset_id = ?').all(a.id)
-      .map((r) => ({ job_function: r.job_function, u_lob_2: r.u_lob_2, 'LOB-CG': r.lob_cg, 'LOB-CG Sort': r.lob_cg_sort }));
-  }
-  if (key === 'people') {
-    const type = { Associate: 'Employee', 'Non-Associate': 'Contractor' };
-    return db.prepare(
-      'SELECT person_key, email, user_id, display_name, u_lob_2, job_function, office_code, sbl, person_type, extract_as_of FROM people WHERE dataset_id = ?'
-    ).all(a.id).map((r) => ({
-      PersonKey: r.person_key, email: r.email, 'User ID': r.user_id, DisplayName: r.display_name, u_lob_2: r.u_lob_2,
-      job_function: r.job_function, OfficeCode: r.office_code, u_bo_fier_sbl: r.sbl,
-      u_cg_person_type_code: type[r.person_type] || '', ExtractAsOf: r.extract_as_of,
-    }));
-  }
-  return [];
-}
-
 // ---- pull --------------------------------------------------------------------------------
 
 function labelStamp() {
@@ -246,12 +216,14 @@ function saveLastPull(summary) {
 }
 
 async function pull(opts = {}) {
-  if (running) throw conflict('A Power BI pull is already running');
+  if (importLock.isBusy()) {
+    throw conflict(importLock.current() === 'powerbi' ? 'A Power BI pull is already running' : 'A vendor pull is already running');
+  }
   const miss = problems();
   if (miss.length) throw badRequest(`Power BI is not configured: ${miss.join(', ')}`);
   const tables = tablesConfig();
   if (!tables.usage) throw badRequest('powerbi.tables.usage is required');
-  running = true;
+  importLock.tryAcquire('powerbi');
   const t0 = Date.now();
   const db = getDb();
   let id = null;
@@ -312,7 +284,7 @@ async function pull(opts = {}) {
     progress('error', { message: msg });
     throw e;
   } finally {
-    running = false;
+    importLock.release('powerbi');
   }
 }
 

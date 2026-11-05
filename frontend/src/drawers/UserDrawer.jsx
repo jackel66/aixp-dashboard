@@ -36,6 +36,7 @@ function Body({ d }) {
       <div className="flex items-center gap-2 flex-wrap" style={{ marginTop: 8 }}>
         <Chip tone="accent">{p.person_type}</Chip>
         <Chip>{p.lob_cg}</Chip>
+        {p.origin === 'vendor' && <Chip tone="outline" title="This person is not in the extract. The LOB-CG comes from the vendor org mapping.">LOB from vendor org</Chip>}
         <Chip tone="outline">{p.region}</Chip>
         <Chip tone="outline">{p.sbl}</Chip>
         {p.office_code && <Chip tone="outline">Office {p.office_code}</Chip>}

@@ -14,6 +14,7 @@ import { useQuery } from '../../lib/query.js';
 import { useLiveRefresh } from '../../lib/live.jsx';
 import { api, isMock } from '../../lib/api.js';
 import { count, dateLong } from '../../lib/format.js';
+import VendorConnectors from './VendorConnectors.jsx';
 
 const MODES = [
   { value: 'fixture', label: 'Fixture' },
@@ -48,7 +49,7 @@ function seconds(ms) {
   return s >= 60 ? Math.floor(s / 60) + ' min ' + (s % 60) + ' s' : s + ' s';
 }
 
-function SecretField({ id, label, stored, value, onChange, hint }) {
+export function SecretField({ id, label, stored, value, onChange, hint }) {
   return (
     <Field label={label} htmlFor={id} hint={hint}>
       <div className="flex items-center gap-2">
@@ -84,12 +85,12 @@ function Checklist({ r }) {
   );
 }
 
-function ProgressPanel({ p, onDismiss }) {
-  const idx = p.stage === 'error' ? STAGES.indexOf(p.lastStage || 'auth') : STAGES.indexOf(p.stage);
+export function ProgressPanel({ p, onDismiss, stages = STAGES, source = 'Power BI' }) {
+  const idx = p.stage === 'error' ? stages.indexOf(p.lastStage || 'auth') : stages.indexOf(p.stage);
   return (
-    <Card title="Pull progress" caption={p.stage === 'done' ? 'Finished.' : p.stage === 'error' ? 'Stopped with an error.' : 'Pulling from Power BI. This page can stay open or be left.'}>
+    <Card title="Pull progress" caption={p.stage === 'done' ? 'Finished.' : p.stage === 'error' ? 'Stopped with an error.' : 'Pulling from ' + source + '. This page can stay open or be left.'}>
       <ul className="flex flex-wrap gap-2 list-none p-0 m-0" aria-label="Pull stages">
-        {STAGES.map((s, i) => {
+        {stages.map((s, i) => {
           let tone = 'outline';
           if (p.stage === 'error' && i === idx) tone = 'fail';
           else if (i < idx || p.stage === 'done') tone = 'ok';
@@ -97,6 +98,11 @@ function ProgressPanel({ p, onDismiss }) {
           return <li key={s}><Chip tone={tone} aria-current={i === idx ? 'step' : undefined}>{s}</Chip></li>;
         })}
       </ul>
+      {p.vendors && Object.keys(p.vendors).length > 0 && (
+        <ul className="flex flex-wrap gap-2 list-none p-0 m-0" style={{ marginTop: 10 }} aria-label="Vendors in this pull">
+          {Object.keys(p.vendors).map((v) => <li key={v}><Chip tone={p.vendor === v && p.stage !== 'done' ? 'accent' : 'outline'}>{v}: {p.vendors[v]}</Chip></li>)}
+        </ul>
+      )}
       <div className="flex gap-6 flex-wrap" style={{ marginTop: 12 }} aria-live="polite">
         <span className="t-small text-muted">Table <span className="num text-ink">{p.table || 'n/a'}</span></span>
         <span className="t-small text-muted">Chunk <span className="num text-ink">{p.chunk !== undefined && p.chunk !== null ? String(p.chunk) : 'n/a'}</span></span>
@@ -136,6 +142,7 @@ function Form({ s, status, reloadStatus }) {
   const [progress, setProgress] = useState(null);
   const [pulling, setPulling] = useState(false);
   const lastStage = useRef('auth');
+  const pullingRef = useRef(false);
   const timers = useRef([]);
   const sig = JSON.stringify(base);
   useEffect(() => { setF(base); setSecret(''); setToken(''); }, [sig]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -181,8 +188,9 @@ function Form({ s, status, reloadStatus }) {
     } catch (e) { toast.error(e.message || 'Test failed'); setTest(null); } finally { setTesting(false); }
   };
 
+  pullingRef.current = pulling;
   const onEvent = (ev) => {
-    if (!ev || ev.type !== 'import.progress') return;
+    if (!ev || ev.type !== 'import.progress' || ev.vendor || !pullingRef.current) return; // vendor pulls show in the vendor panel
     if (ev.stage && ev.stage !== 'error') lastStage.current = ev.stage;
     setProgress((p) => ({ ...(p || {}), ...ev, lastStage: lastStage.current }));
     if (ev.stage === 'done') { setPulling(false); toast.success('Power BI pull finished'); reloadStatus(); }
@@ -313,6 +321,8 @@ function Form({ s, status, reloadStatus }) {
         footer={(<><Button variant="secondary" onClick={() => setAsk(false)}>Cancel</Button><Button onClick={startPull}>Pull now</Button></>)}>
         <p className="m-0">This reads {f.months_back} months of usage plus people and lookups from the chosen dataset and builds a new dataset. {f.auto_promote ? 'If verification does not fail it becomes the current dataset and the one in use is archived.' : 'It stays staged until you promote it from Data quality.'} A full pull can take several minutes.</p>
       </Dialog>
+
+      <VendorConnectors s={s} />
     </div>
   );
 }

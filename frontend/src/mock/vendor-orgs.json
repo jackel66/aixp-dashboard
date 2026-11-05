@@ -1,0 +1,127 @@
+{
+ "rows": [
+  {
+   "id": 1,
+   "vendor": "anthropic",
+   "value": "GBS - L&C",
+   "normalized": "gbs l&c",
+   "lob_cg": "GBS - L&C",
+   "match_method": "exact",
+   "score": 1,
+   "people_count": 48,
+   "suggestions": [],
+   "confirmed_by": null,
+   "last_seen_at": "2026-11-04T06:30:00Z"
+  },
+  {
+   "id": 2,
+   "vendor": "anthropic",
+   "value": "Technology Org",
+   "normalized": "technology",
+   "lob_cg": null,
+   "match_method": null,
+   "score": null,
+   "people_count": 31,
+   "suggestions": [
+    {
+     "lob_cg": "Technology",
+     "score": 0.91
+    },
+    {
+     "lob_cg": "Tech Ops",
+     "score": 0.82
+    }
+   ],
+   "confirmed_by": null,
+   "last_seen_at": "2026-11-04T06:30:00Z"
+  },
+  {
+   "id": 3,
+   "vendor": "anthropic",
+   "value": "Capital Mkts",
+   "normalized": "capital mkts",
+   "lob_cg": "Capital Markets",
+   "match_method": "fuzzy_confirmed",
+   "score": 0.86,
+   "people_count": 22,
+   "suggestions": [
+    {
+     "lob_cg": "Capital Markets",
+     "score": 0.86
+    }
+   ],
+   "confirmed_by": {
+    "id": 1,
+    "username": "admin"
+   },
+   "last_seen_at": "2026-11-04T06:30:00Z"
+  },
+  {
+   "id": 4,
+   "vendor": "anthropic",
+   "value": "Wealth Mgmt (Advisors)",
+   "normalized": "wealth mgmt advisors",
+   "lob_cg": null,
+   "match_method": null,
+   "score": null,
+   "people_count": 17,
+   "suggestions": [],
+   "confirmed_by": null,
+   "last_seen_at": "2026-11-03T06:30:00Z"
+  },
+  {
+   "id": 5,
+   "vendor": "anthropic",
+   "value": "Finance",
+   "normalized": "finance",
+   "lob_cg": "Finance",
+   "match_method": "alias",
+   "score": 1,
+   "people_count": 12,
+   "suggestions": [],
+   "confirmed_by": {
+    "id": 1,
+    "username": "admin"
+   },
+   "last_seen_at": "2026-11-04T06:30:00Z"
+  }
+ ],
+ "lob_values": [
+  {
+   "value": "Capital Markets",
+   "sort": 1
+  },
+  {
+   "value": "Finance",
+   "sort": 2
+  },
+  {
+   "value": "GBS - L&C",
+   "sort": 3
+  },
+  {
+   "value": "Tech Ops",
+   "sort": 4
+  },
+  {
+   "value": "Technology",
+   "sort": 5
+  },
+  {
+   "value": "Wealth Management",
+   "sort": 6
+  }
+ ],
+ "aliases": [
+  {
+   "id": 1,
+   "alias": "finance",
+   "lob_cg": "Finance"
+  }
+ ],
+ "counts": {
+  "mapped": 3,
+  "unmatched": 2,
+  "people_unmatched": 48
+ }
+}

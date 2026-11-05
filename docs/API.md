@@ -81,6 +81,20 @@ builder B as routes land. Every error is {error: "message"} with an HTTP status.
 | PUT | /api/settings/seat-rates | {rows} |
 | GET | /api/settings/lob-cg-map | |
 | PUT | /api/settings/lob-cg-map | {rows}; rebuilds people.lob_cg and rollup_org_month |
+
+## Vendor orgs (settings.manage)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | /api/vendor-orgs | query vendor; {rows: [{id, vendor, value, normalized, lob_cg, match_method, score, people_count, suggestions: [{lob_cg, score}], confirmed_by: {id, username} or null, last_seen_at}], lob_values: [{value, sort}], aliases: [{id, alias, lob_cg}], counts: {mapped, unmatched, people_unmatched}} |
+| PUT | /api/vendor-orgs/:id | {lob_cg: string or null, method?: fuzzy_confirmed or manual}; null clears; 400 for a lob_cg not in the active dataset; 404 unknown id; returns the row |
+| POST | /api/vendor-orgs/aliases | {alias, lob_cg}; alias stored normalized; 409 duplicate; 400 unknown lob_cg |
+| DELETE | /api/vendor-orgs/aliases/:id | rows mapped through that alias go back to unmapped |
+| GET | /api/vendor-orgs/:id/people | {rows: [{person_key, email, display_name, in_extract, extract_lob_cg}]} |
+| POST | /api/vendor-orgs/apply | re-matches unmapped, exact and normalized rows, adds vendor-origin people to the active dataset, rebuilds rollups; returns {mapped, unmatched, people_unmatched, re_matched, people_created, usage_rows_matched} |
+| GET | /api/vendor-orgs/export.csv | query vendor; one row per vendor org value |
+
+Every mutation writes an auth_events row (kind org_map_changed) and broadcasts settings.changed {keys: ['vendor_orgs']}. /api/users rows and /api/users/:key person carry origin ('extract' or 'vendor'); dataset counts carry people_vendor.
 | GET | /api/export/:report.csv | report = summary, trend, platform (needs platform=<id>), organization, models, users; first line is "# " + caveat; text cells starting with = + - @ get a leading apostrophe; consumption always has a unit column |
 
 ## Reports
@@ -120,6 +134,26 @@ A pull always ends with stage done (rows = usage rows) or stage error (message).
 Environment: AIXP_SECRET_KEY (32 bytes, hex or base64) else a key file beside the database
 (backend/data/.secret-key); POWERBI_LOGIN_URL and POWERBI_API_URL override the Azure AD and Power BI hosts (tests).
 
+## Vendor connectors (CONTRACT section 16.1, 16.2)
+
+Pull usage straight from each vendor API into one dataset (source import, provider vendor). Platforms without an
+enabled connector keep their rows from the active dataset. Settings keys vendors.* (schedule, auto_promote,
+months_back, last_pull_at, last_pull) and anthropic.* (enabled, api_key, base_url, anthropic_version, rebuild_days,
+history_floor) are read and written through /api/settings. anthropic.api_key is write-only: GET returns
+{set: true|false}; PUT with a string stores it encrypted, with '' or the masked object keeps it, with null clears it.
+Upstream failures answer 502 with the vendor error text; the key is redacted.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | /api/vendors | {connectors: [{id, label, platform, enabled, configured, problems: [names], describe: {fields, limits, lag, history_floor}}], schedule, auto_promote, months_back, running, last_pull_at, last_pull, next_run_at}; last_pull is {dataset_id, verdict, rows, duration_ms, error, by_vendor: {id: {rows, usd, from, to, data_refreshed_at, coverage: {org_total_usd, user_rows_usd, data_refreshed_at, pct}}}} |
+| POST | /api/vendors/:id/test | {ok, duration_ms, steps: [{key, ok, label, detail}]}; anthropic steps auth, cost, usage, groups, freshness, floor; 200 even when ok is false, 404 unknown connector |
+| POST | /api/vendors/pull | body {} or {ids?: [connector ids], promote?: bool}; {dataset_id, verdict, promoted, rows, duration_ms, by_vendor}; 400 no enabled connector, unknown id, id not enabled or not configured; 409 while a Power BI or vendor pull runs; 502 upstream (the dataset is marked failed, note names the vendor); broadcasts import.progress |
+| GET | /api/vendors/detail | query vendor (default anthropic), from, to (YYYY-MM-DD), person_key, product; {rows: [{vendor, date, person_key, email, model, product, tokens, cost_usd, list_cost_usd, requests, pulled_at}], truncated}; needs people.view; a scoped caller sees only people in their LOB-CG values |
+
+SSE import.progress gains vendor (connector id or null) and the stage carry: {stage: auth\|usage\|carry\|people\|lookups\|normalize\|verify\|promote\|done\|error, vendor, table, chunk, rows, message}.
+Table vendor_usage_detail (vendor, date, person_key, email, model, product, tokens, cost_usd, list_cost_usd, requests, pulled_at)
+keeps the per-product breakdown the usage grain cannot hold; every pull replaces its window.
+
 ## Access and sign-in (CONTRACT section 14)
 
 Every /api route except GET /api/health and /api/auth/* needs a session cookie (aixp_session, HttpOnly, SameSite=Lax,
@@ -143,7 +177,8 @@ Enforcement table (first match wins, in backend/src/auth.js):
 | /api/settings, /api/settings/* | settings.manage |
 | GET /api/datasets | dashboard.view |
 | POST, PUT, DELETE /api/datasets/* | data.manage |
-| /api/fixtures/*, /api/powerbi/* | data.manage |
+| GET /api/vendors/detail | people.view |
+| /api/fixtures/*, /api/powerbi/*, /api/vendors/* | data.manage |
 | /api/users, /api/users/* | people.view |
 | GET /api/export/users.csv, /api/export/report/users_*.csv | people.view and export.csv |
 | /api/export/* | export.csv |

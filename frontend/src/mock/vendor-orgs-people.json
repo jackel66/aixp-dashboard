@@ -1,0 +1,25 @@
+{
+ "rows": [
+  {
+   "person_key": "achen@example.com",
+   "email": "achen@example.com",
+   "display_name": "Avery Chen",
+   "in_extract": true,
+   "extract_lob_cg": "GBS - L&C"
+  },
+  {
+   "person_key": "jpatel@example.com",
+   "email": "jpatel@example.com",
+   "display_name": "Jordan Patel",
+   "in_extract": true,
+   "extract_lob_cg": "Technology"
+  },
+  {
+   "person_key": "user:u_0042",
+   "email": "",
+   "display_name": "",
+   "in_extract": false,
+   "extract_lob_cg": null
+  }
+ ]
+}

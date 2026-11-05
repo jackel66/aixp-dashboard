@@ -1482,3 +1482,43 @@ method) and broadcasts settings.changed {keys: ['vendor_orgs']}.
   with no key answers the first step failed with the vendor's error text. Nothing else can
   be proven without a key; the fake server suite is the proof and the first real key is
   the fix loop.
+
+## 17. Integration help: URLs, ports and permissions per platform (addendum 2026-11-04, builder P)
+
+Purpose (Doug): a help page or section per integration that states the URLs, ports and
+permissions it needs, so the CG teams who request keys and open firewalls have one place
+to read from.
+
+Source of truth: backend/src/services/integrationHelp.js (written by Fable, static, ASCII;
+builders do not edit its content). Each entry: {id, name, status 'built' | 'planned', kind
+'source' | 'identity' | 'vendor', summary, urls: [{label, value}], ports (string),
+credentials: [string], permissions: [string], limits: [string], where (string), notes:
+[string]}. Entries today: powerbi, ad, anthropic (built), github, openai, cowork (planned).
+
+Backend (owner P): GET /api/help/integrations -> {rows: integrationHelp.list()} and GET
+/api/help/integrations/:id -> one entry or 404. Rule in auth.js: GET /help... needs
+dashboard.view (every signed-in data user may read it; settings users without
+dashboard.view get it too, so the rule is: any authenticated user; add it as a keys: []
+rule that still requires a session, placed before the default). Test tests/help.test.js:
+both routes answer for a Viewer, 401 signed out, every entry ASCII, every entry has the
+keys above, ids unique, the three built ids match the connector registry plus powerbi and
+ad. docs/API.md rows.
+
+Frontend (owner P):
+- Page /help (pages/HelpPage.jsx): PageHeader "Integration requirements" with the line
+  "What each integration needs before it can connect: addresses, ports, credentials and
+  the permissions behind them. Planned connectors show what the research found."; filter
+  chips All | Built | Planned; one Card per entry with the status chip (Built | Planned),
+  kind chip, summary, then labelled blocks: Addresses (two-column table label/value, values
+  in a monospace span that wraps), Network (ports text), Credentials (list), Permissions
+  (list), Limits (list), Where in the app, Notes. A "Copy as text" button per card puts a
+  plain ASCII rendering of that card on the clipboard (for a firewall or access request
+  email). Anchors #<id> so links from settings land on the card.
+- Nav: a "Help" link beside Settings in the account area (every signed-in user), and the
+  Footer gains Help.
+- Settings: the Anthropic connector card, the Power BI panel and the Active Directory
+  section each gain a "Requirements" fold (collapsed) that renders the same blocks for its
+  entry from GET /api/help/integrations/:id, plus a "Open help" link to /help#<id>.
+- Mocks: help-integrations.json (copy of the catalogue through the API shape).
+- Build green, ASCII scan, screenshots light and dark of the Help page (filtered to
+  Planned too), one Requirements fold open on the Anthropic card.

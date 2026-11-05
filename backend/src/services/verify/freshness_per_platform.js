@@ -21,6 +21,14 @@ module.exports = {
       if (!overall || r.max_date > overall) overall = r.max_date;
     }
     const stale = Number(ctx.settings['verify.stale_days'] === undefined ? 5 : ctx.settings['verify.stale_days']);
+    let carried = new Set();
+    try {
+      const o = JSON.parse((ctx.db.prepare('SELECT options_json FROM datasets WHERE id = ?').get(ctx.datasetId) || {}).options_json || '{}') || {};
+      if (o.provider === 'vendor') {
+        const pulled = new Set((o.connectors || []).map((id) => (require('../connectors').get(id) || {}).platform || id));
+        carried = new Set(PLATFORMS.map((p) => p.id).filter((id) => !pulled.has(id)));
+      }
+    } catch (e) { carried = new Set(); }
     const out = [];
     for (const p of PLATFORMS) {
       const r = by[p.id];
@@ -28,7 +36,14 @@ module.exports = {
       const lag = diffDays(r.max_date, overall);
       const metrics = { asOf: r.max_date, overallMax: overall, lagDays: lag, staleDays: stale };
       const ev = evidence(['platform', 'latest_date', 'overall_max', 'lag_days'], [[platformName(p.id), r.max_date, overall, lag]]);
-      if (lag > stale) {
+      if (lag > stale && carried.has(p.id)) {
+        // Carried over from the previous dataset until the platform has a connector: a warning, not a failure.
+        const f = fail(p.id,
+          `${platformName(p.id)} stopped at ${r.max_date}, ${lag} days behind the overall maximum ${overall}; carried over from the previous dataset.`,
+          Object.assign(metrics, { carriedOver: true }), ev, lag);
+        f.severity = 'warn';
+        out.push(f);
+      } else if (lag > stale) {
         out.push(fail(p.id,
           `${platformName(p.id)} stopped at ${r.max_date}, ${lag} days behind the overall maximum ${overall}. ` +
           'The overall maximum date hid it.', metrics, ev, lag));
