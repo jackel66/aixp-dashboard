@@ -2,24 +2,24 @@
 
 Client: Capital Group (CG)
 Provider: Trace3, Financial Services Group
-Prepared by: Doug Austin, Principal Solutions Architect
-Version: 0.3 draft, 5 November 2026
-Status: for review. Fees, payment terms and the engagement model are set out in the accompanying Trace3 order form, not in this document.
+Prepared by: Doug Austin, Applied AI Architect
+Version: 0.4 draft, 11-5-2026
+Status: for review.
 
 ## 1. Background
 
-Capital Group maintains an executive view of AI consumption and directional spend across Anthropic, OpenAI, GitHub Copilot and Microsoft Copilot Cowork. Today that view is the AI Platform Economics report in Power BI, fed by vendor CSV exports that are pulled by hand and loaded into a semantic model. The report supports the COO forum and related stakeholders. The SME onboarding guide dated 27 October 2026 describes it as a directional view, not an invoice, a budget reconciliation or a Finance expense system.
+Capital Group maintains an executive view of AI consumption and directional spend across Anthropic, OpenAI, GitHub Copilot and Microsoft Copilot Cowork. Today that view is the AIxP report, Capital Group's name for its AI Platform Economics reporting in Power BI, fed by vendor CSV exports that are pulled by hand and loaded into a semantic model. The report supports the COO forum and related stakeholders. The SME onboarding guide dated 27 October 2026 describes it as a directional view, not an invoice, a budget reconciliation or a Finance expense system.
 
-The manual export path has three costs. Data arrives days after the fact and only when someone runs the exports. Each vendor file carries its own grain, units and identity key, so the joins, normalisation rules and verification checks live in Power Query and DAX where few people can inspect them. And the validation steps the guide requires after every refresh are manual.
+The manual export path has three costs. Data arrives days after the fact and only when someone runs the exports. Each vendor file carries its own grain, units and identity key, so the joins, normalization rules and verification checks live in Power Query and DAX where few people can inspect them. And the validation steps the guide requires after every refresh are manual.
 
 Capital Group now wants a dashboard with live statistics that shows AI cost back to business leaders by line of business, as close to real cost analysis as each vendor platform allows. That means pulling usage and cost directly from the vendor and internal platforms through their APIs, applying one documented set of attribution rules, verifying every load, and reconciling the result against vendor billing so the figures leaders see can be defended. The Power BI semantic model stays available as a comparison source during reconciliation.
 
 ## 2. Objectives
 
 1. Show AI cost and consumption back to business leaders by line of business, platform, model and person, refreshed from the source platforms daily and more often where a platform allows it.
-2. Get as close to billed cost as each platform permits: billed figures where the vendor exposes them, allocated figures where it does not, with every allocated figure labelled as such.
+2. Get as close to billed cost as each platform permits: billed figures where the vendor exposes them, allocated figures where it does not, with every allocated figure labeled as such.
 3. Cover the platforms in use: APEX (Capital Group internal tooling), Microsoft Copilot and Copilot Cowork, Anthropic, GitHub Copilot, AWS Bedrock, and OpenAI with ChatGPT Enterprise.
-4. One documented set of normalisation, identity and attribution rules, applied in code and tested, matching the SME onboarding guide where it applies.
+4. One documented set of normalization, identity and attribution rules, applied in code and tested, matching the SME onboarding guide where it applies.
 5. Every load verified before it is visible, with the evidence a reviewer needs when a check fails.
 6. Access restricted by role and by line of business, with Active Directory sign-in and an audit trail, on infrastructure inside the Capital Group environment.
 
@@ -33,12 +33,12 @@ One discovery track per platform, run with the Capital Group team that owns it:
 
 - APEX. Establish what the internal tooling is, what usage and cost data it records (requests, tokens, model, caller, cost or internal rate), how it can be read (API, database, export) and who owns access. APEX is the one platform with no prior research; its integration design is a discovery output.
 - Microsoft. Confirm the Copilot and Copilot Cowork licensing in place, which Graph reports and endpoints are available to the tenant, the application registration and consent path, and how per-user credits are exposed today (the beta balance endpoint, the credits report, or both).
-- Anthropic. Confirm the Claude Enterprise organisation, who holds the primary owner role that can create an analytics key, the history available and the products in use (chat, Claude Code, Cowork).
-- GitHub. Confirm the enterprise and organisations in scope, the billing platform in use, whether the Copilot usage metrics policy is enabled, and the token type the security team will permit.
+- Anthropic. Confirm the Claude Enterprise organization, who holds the primary owner role that can create an analytics key, the history available and the products in use (chat, Claude Code, Cowork).
+- GitHub. Confirm the enterprise and organizations in scope, the billing platform in use, whether the Copilot usage metrics policy is enabled, and the token type the security team will permit.
 - AWS Bedrock. Confirm the accounts and regions in scope, whether model invocation logging is enabled and since when, how principals call Bedrock (shared roles, per-user roles, Identity Center, API keys), and whether Cost Explorer resource and identity data are enabled.
-- OpenAI and ChatGPT Enterprise. Confirm the organisation and workspace structure, admin key ownership, and which cost surfaces are in use (API platform, ChatGPT Enterprise credits, or both).
+- OpenAI and ChatGPT Enterprise. Confirm the organization and workspace structure, admin key ownership, and which cost surfaces are in use (API platform, ChatGPT Enterprise credits, or both).
 
-Cross-platform discovery: the identity model (the People extract, email and alias keys, Active Directory attributes) and how each platform's caller identity maps to a person; the showback model with business leaders (what a leader sees, how shared or unattributed cost is treated, seat versus consumption basis, the rate used for Microsoft credits); the environment (server, proxy, certificate authority, reverse proxy, Active Directory, egress rules). Discovery ends with a written report, an integration matrix per platform (data available, grain, identity key, lag, history floor, access path, owner), the access request list and the environment specification.
+Cross-platform discovery: the identity model (the People extract, email and alias keys, Active Directory attributes) and how each platform's caller identity maps to a person; the show back model with business leaders (what a leader sees, how shared or unattributed cost is treated, seat versus consumption basis, the rate used for Microsoft credits); the environment (server, proxy, certificate authority, reverse proxy, Active Directory, egress rules). Discovery ends with a written report, an integration matrix per platform (data available, grain, identity key, lag, history floor, access path, owner), the access request list and the environment specification.
 
 ### 3.2 Phase 2: Access and environment
 
@@ -46,13 +46,13 @@ Working with Capital Group's internal teams to obtain API access on each platfor
 
 ### 3.3 Phase 3: Design and development
 
-Design: the showback views for business leaders, designed with them from the discovery outputs (line-of-business cost and trend, cost per person and per model, seat versus consumption, allocated versus billed, drill to the people and models behind a figure), together with the executive overview, platform pages, organisation matrix, models, users, data quality and reports pages already prototyped.
+Design: the show back views for business leaders, designed with them from the discovery outputs (line-of-business cost and trend, cost per person and per model, seat versus consumption, allocated versus billed, drill to the people and models behind a figure), together with the executive overview, platform pages, organization matrix, models, users, data quality and reports pages already prototyped.
 
-Development: extend the prototype to the agreed design; build the APEX connector; adapt the five vendor connectors to what discovery found; implement live statistics (daily pulls, intraday refresh where a platform's lag and limits allow it, freshness shown per platform); the cost model (billed figures where available, allocation rules where not, each figure labelled with its source); organisation correlation from vendor teams and groups to LOB-CG; roles, Active Directory sign-in and line-of-business data scopes; the security hardening items from the 5 November 2026 review; proxy and certificate support; installation on the CG server with a service definition and runbook.
+Development: extend the prototype to the agreed design; build the APEX connector; adapt the five vendor connectors to what discovery found; implement live statistics (daily pulls, intraday refresh where a platform's lag and limits allow it, freshness shown per platform); the cost model (billed figures where available, allocation rules where not, each figure labeled with its source); organization correlation from vendor teams and groups to LOB-CG; roles, Active Directory sign-in and line-of-business data scopes; the security hardening items from the 5 November 2026 review; proxy and certificate support; installation on the CG server with a service definition and runbook.
 
 ### 3.4 Phase 4: Data gathering remediation
 
-The first connection to each platform with real credentials is a fix loop: the connection test reports every step with the platform's own error text, response shapes are corrected, and gaps are closed with the platform owner (logging that is off, permissions missing, identities that do not resolve to a person, history that starts later than expected). Unmatched usage is driven down through the identity rules and organisation correlation, and what remains is reported, not hidden.
+The first connection to each platform with real credentials is a fix loop: the connection test reports every step with the platform's own error text, response shapes are corrected, and gaps are closed with the platform owner (logging that is off, permissions missing, identities that do not resolve to a person, history that starts later than expected). Unmatched usage is driven down through the identity rules and organization correlation, and what remains is reported, not hidden.
 
 ### 3.5 Phase 5: Metrics and cost reconciliation
 
@@ -68,7 +68,7 @@ Administrator and SME walkthroughs, the maintained documentation set (design con
 |---|---|---|---|
 | D1 | Discovery report and integration matrix | 1 | Covers every platform in section 2; access request list and environment specification issued |
 | D2 | Access and environment in place | 2 | Credentials for each platform received; server reachable; network path proven by the connection tests |
-| D3 | Showback design | 3 | Business leader views agreed in writing by the product owner |
+| D3 | Show back design | 3 | Business leader views agreed in writing by the product owner |
 | D4 | AIxP Dashboard application, source and build | 3 | Builds from source; automated test suite passes; every page renders |
 | D5 | Platform connectors (APEX plus five vendors) | 3, 4 | Each connection test passes with CG credentials; one month pulled per platform with freshness, duplicate and attribution checks passing or explained |
 | D6 | Identity, access and security | 3 | AD sign-in works for a named test group; scopes verified by restricted-consumer tests; review items closed with evidence |
@@ -96,14 +96,14 @@ Administrator and SME walkthroughs, the maintained documentation set (design con
 5. A Power BI service principal, or a user able to issue a token, is permitted on the AI Platform Economics workspace for the comparison pulls.
 6. The People extract and the LOB-CG and region mappings continue to be supplied by Capital Group.
 7. Vendor invoices or billing statements are made available for the reconciliation month, or reconciliation is limited to the platforms' own reporting and the report says so.
-8. Vendor API behaviour, limits and history floors are as documented by the vendors on 4 and 5 November 2026; changes during the engagement are handled under change control.
+8. Vendor API behavior, limits and history floors are as documented by the vendors on 4 and 5 November 2026; changes during the engagement are handled under change control.
 
 ## 7. Responsibilities
 
 | Trace3 | Capital Group |
 |---|---|
 | Run discovery and write the report, integration matrix, access requests and environment specification | Provide platform owners, SMEs and business leaders for discovery and design |
-| Design the showback views with business leaders | Approve the design and the allocation rules |
+| Design the show back views with business leaders | Approve the design and the allocation rules |
 | Build, test and document the application and connectors | Obtain credentials, registrations and IAM policies through internal teams |
 | Write the server, network and firewall requests | Provision the server and implement network and firewall changes |
 | Run the fix loops and remediation with each platform owner | Enable logging and permissions each platform needs |
@@ -121,9 +121,9 @@ Hours are Trace3 effort estimates for planning and staffing. They are not fees; 
 
 | Phase | Work | Low hours | High hours | Main driver of the range |
 |---|---|---|---|---|
-| 1 | Discovery: six platform tracks, identity, showback and environment workshops, report, integration matrix, access requests, environment specification | 80 | 120 | APEX unknowns; number of owners to meet |
+| 1 | Discovery: six platform tracks, identity, show back and environment workshops, report, integration matrix, access requests, environment specification | 80 | 120 | APEX unknowns; number of owners to meet |
 | 2 | Access and environment: request writing, follow-up with internal teams, server specification, proxy and certificate work, security review inputs, verification of each path | 40 | 80 | CG lead times and rework on requests |
-| 3 | Design and development: showback design with leaders, showback views, APEX connector, adaptation of the five vendor connectors, live statistics, cost model and labelling, organisation correlation, security hardening, proxy and certificate support, installation and runbook | 240 | 320 | APEX connector; design review rounds |
+| 3 | Design and development: show back design with leaders, show back views, APEX connector, adaptation of the five vendor connectors, live statistics, cost model and labelling, organization correlation, security hardening, proxy and certificate support, installation and runbook | 240 | 320 | APEX connector; design review rounds |
 | 4 | Data gathering remediation: fix loop per platform with its owner, identity resolution, gap closure, unmatched usage reduction | 70 | 120 | Response shapes that differ from documentation |
 | 5 | Metrics and cost reconciliation: per platform closed day and month, billing comparison, Power BI comparison, rate confirmation, restricted-consumer tests, report | 90 | 130 | Billing statement availability; differences to explain |
 | 6 | Handover and support: walkthroughs, document set, support window | 40 | 60 | Length of the support window |
@@ -162,13 +162,13 @@ A weekly written status note covers progress against the phases, open dependenci
 | Vendor API responses differ from documentation | Fix loops take longer | Connection tests report every step with vendor error text; estimates include a loop per platform |
 | Microsoft exposes no supported per-user credit history | Cowork credits stay a monthly snapshot | Labelled as such; revisit when Microsoft publishes a report API |
 | Bedrock caller identity does not name a person | Bedrock cost lands as unattributed | Discovery confirms how principals call Bedrock; request metadata or per-user roles if needed |
-| Billed cost and API usage do not tie out | Leaders question the figures | Reconciliation explains each difference; allocated figures labelled; confidence stated per platform |
+| Billed cost and API usage do not tie out | Leaders question the figures | Reconciliation explains each difference; allocated figures labeled; confidence stated per platform |
 | Corporate proxy or TLS inspection blocks egress | Pulls fail inside CG | Proxy and corporate CA support built in; egress host list published per integration |
 | Figures read as Finance expense | Misuse of the dashboard | Standing caveat kept on every page and export; rates confirmed with Finance |
 
 ## 12. Security and data handling
 
-Sign-in sessions are server-side with HttpOnly cookies; every write requires a request header that blocks cross-site forgery; every API route sits behind the sign-in gate. Vendor keys, the directory bind password and the Power BI secret are encrypted at rest with AES-256-GCM under a key held outside the repository. Data scopes are enforced on every read. Usage data stays on the Capital Group server; no data leaves the environment except the outbound platform API calls needed to pull it. Trace3 does not retain Capital Group data after handover. The security review of 5 November 2026 and its closure evidence are part of deliverable D6.
+The application is served over HTTPS only, behind the corporate TLS certificate. Sign-in sessions are held on the server and referenced by a cookie that page scripts cannot read (the HttpOnly attribute) and that the browser sends only over HTTPS (the Secure attribute); no token is stored in the browser. Every write requires a request header that blocks cross-site forgery, and every API route sits behind the sign-in gate. Vendor keys, the directory bind password and the Power BI secret are encrypted at rest with AES-256-GCM under a key held outside the repository. Data scopes are enforced on every read. Usage data stays on the Capital Group servers; no data leaves the environment except the outbound platform API calls needed to pull it. Trace3 does not retain Capital Group data after handover. The security review of 5 November 2026 and its closure evidence are part of deliverable D6.
 
 ## 13. Commercial terms
 
