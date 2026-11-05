@@ -46,7 +46,7 @@ export default function OverviewPage() {
   return (
     <div className="page">
       <PageHeader eyebrow={scoped ? 'Your lines of business' : 'Executive view'} title="Overview"
-        description={s ? 'Spend and consumption across four platforms, ' + (shownRange.from === shownRange.to ? '24 hours to ' + dateLong(shownRange.to) : dateLong(shownRange.from) + ' to ' + dateLong(shownRange.to)) + '.' : 'Spend and consumption across four platforms.'}
+        description={s ? 'Spend and consumption across all platforms, ' + (shownRange.from === shownRange.to ? '24 hours to ' + dateLong(shownRange.to) : dateLong(shownRange.from) + ' to ' + dateLong(shownRange.to)) + '.' : 'Spend and consumption across all platforms.'}
         right={s ? <AsOfChip asOf={s.asOf} dataset={s.dataset} /> : null} />
       <FilterBar values={values} set={set} asOf={s ? s.asOf : ''} range={shownRange} showRange={!!s} />
       <DataState q={summary} skeleton={<div className="stack-32"><SkeletonCard height={110} /><SkeletonCard height={300} /></div>}>

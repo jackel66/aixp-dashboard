@@ -100,12 +100,12 @@ test('users_new, users_inactive and costs_movers return rows on the default fixt
   assert.ok(top.rows[0].share > 0 && top.rows[0].share < 100, 'share is a percent number');
   const sum = (await app.call('GET', '/api/summary')).json;
   const ps = (await app.call('GET', '/api/reports/platforms_summary')).json;
-  assert.equal(ps.rows.length, 4);
+  assert.equal(ps.rows.length, 5);
   const consTotal = ps.rows.reduce((a, r) => a + r.consumption_usd, 0);
   assert.ok(Math.abs(consTotal - sum.totals.spend.consumption.usd) < 0.1, `${consTotal} vs ${sum.totals.spend.consumption.usd}`);
   for (const r of ps.rows) assert.ok(['tokens', 'credits'].includes(r.consumption.unit));
   const pm = (await app.call('GET', '/api/reports/platforms_monthly?basis=total')).json;
-  assert.ok(pm.rows.every((r) => Math.abs(r.total - ['anthropic', 'openai', 'github', 'cowork'].reduce((a, i) => a + r[`usd_${i}`], 0)) < 0.05));
+  assert.ok(pm.rows.every((r) => Math.abs(r.total - ['anthropic', 'openai', 'github', 'cowork', 'bedrock'].reduce((a, i) => a + r[`usd_${i}`], 0)) < 0.05));
   const gh = (await app.call('GET', '/api/reports/users_top?platform=github&limit=3')).json;
   assert.deepEqual(gh.params.platform, ['github']);
   assert.ok(gh.rows.every((r) => r.usd_anthropic === 0 && r.usd_openai === 0));
@@ -138,7 +138,7 @@ test('CSV export: caveat first line, units and delta flattened', async () => {
   assert.equal(lines[0], `# ${CAVEAT}`);
   const head = lines[1].split(',');
   assert.ok(head.includes('consumption') && head.includes('consumption_unit'));
-  assert.equal(lines.filter(Boolean).length, 2 + 4);
+  assert.equal(lines.filter(Boolean).length, 2 + 5);
   const m = await app.call('GET', '/api/export/report/costs_monthly.csv');
   assert.equal(m.status, 200);
   const mh = m.text.split('\r\n')[1].split(',');

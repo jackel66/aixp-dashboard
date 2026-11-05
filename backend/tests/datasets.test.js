@@ -33,11 +33,11 @@ test('seedFixture runs the whole path and activates a clean dataset', () => {
   assert.equal(a.id, datasetId);
   assert.equal(a.status, 'active');
   assert.ok(a.promoted_at);
-  assert.equal(a.platforms.length, 4);
+  assert.equal(a.platforms.length, 5);
   for (const p of a.platforms) assert.ok(p.rows > 0 && p.min_date && p.max_date && p.cost_usd > 0);
   const h = datasets.healthSummary();
   assert.equal(h.activeDatasetId, datasetId);
-  assert.equal(h.counts.platforms, 4);
+  assert.equal(h.counts.platforms, 5);
   assert.equal(h.counts.people, 80);
   assert.ok(h.counts.usage_rows > 1000);
 });

@@ -11,6 +11,12 @@
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.1162.0",
+    "@aws-sdk/client-cloudwatch": "^3.1162.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.1162.0",
+    "@aws-sdk/client-cost-explorer": "^3.1162.0",
+    "@aws-sdk/client-sts": "^3.1162.0",
+    "@aws-sdk/credential-providers": "^3.1162.0",
     "better-sqlite3": "^12.2.0",
     "express": "^4.19.2",
     "ldapts": "^9.2.0"

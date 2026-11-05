@@ -123,7 +123,7 @@ test('flags that must stay quiet keep their info checks passing', () => {
 test('delta is skipped when there is no previous dataset', () => {
   const r = seedFixture({ people: 60, months: 2, endDate: '2026-10-30', profile: 'clean', previous: false, compareTo: null, promote: false });
   const d = r.run.results.filter((x) => x.check_id === 'platform_total_delta');
-  assert.equal(d.length, 4);
+  assert.equal(d.length, 5);
   assert.equal(d.every((x) => x.status === 'skip'), true);
 });
 

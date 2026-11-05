@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { PLATFORMS } from '../lib/platforms.js';
 import { useAuth } from '../lib/auth.jsx';
 
-// Left navigation column. Sections and the four platform reports live here; the global
+// Left navigation column. Sections and the platform reports live here; the global
 // items (Settings, theme, live state) stay in the top header.
 const SECTIONS = [
   { to: '/', label: 'Executive view', end: true },

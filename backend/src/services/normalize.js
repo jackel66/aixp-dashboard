@@ -2,6 +2,8 @@
 // Normalization: stage_* -> usage, people, seat_rate, region_map, lob_cg_map (CONTRACT section 5).
 const { getDb } = require('../db');
 const { idFor, PLATFORMS } = require('../platforms');
+// Platforms whose consumption is tokens, from the registry (the rest carry credits).
+const TOKEN_IN = PLATFORMS.filter((p) => p.unit === 'tokens').map((p) => `'${p.id}'`).join(', ');
 
 // ---- scalar helpers (also registered as SQL functions) ----------------------------------
 
@@ -144,7 +146,7 @@ WITH l1 AS (
   SELECT s.*, aixp_platform(s.platform) AS pid FROM stage_usage s WHERE s.dataset_id = @ds
 ), l2 AS (
   SELECT l1.id, l1.row_no, l1.pid, aixp_date(l1.date) AS d, aixp_ukey(l1.person_key, l1.pid) AS k,
-    CASE WHEN l1.pid IN ('anthropic', 'openai') THEN trim(coalesce(l1.model, '')) ELSE '' END AS model,
+    CASE WHEN l1.pid IN (${TOKEN_IN}) THEN trim(coalesce(l1.model, '')) ELSE '' END AS model,
     coalesce(aixp_num(l1.tokens), 0) AS tokens, coalesce(aixp_num(l1.credits), 0) AS credits,
     aixp_num(l1.cost_usd) AS cost, aixp_num(l1.requests) AS requests,
     aixp_num(l1.discount_amount) AS disc, aixp_num(l1.net_amount) AS net,
@@ -191,8 +193,8 @@ function normalizeUsage(db, datasetId, coworkRate) {
     `${NORM_CTE}
      INSERT INTO usage (${insertCols})
      SELECT @ds, d, k, pid, model, tokens, credits,
-       CASE WHEN pid IN ('anthropic', 'openai') THEN tokens ELSE credits END,
-       CASE WHEN pid IN ('anthropic', 'openai') THEN 'tokens' ELSE 'credits' END,
+       CASE WHEN pid IN (${TOKEN_IN}) THEN tokens ELSE credits END,
+       CASE WHEN pid IN (${TOKEN_IN}) THEN 'tokens' ELSE 'credits' END,
        coalesce(cost, 0), CASE WHEN cost IS NULL THEN 'none' ELSE 'vendor' END,
        CAST(requests AS INTEGER), disc, net, ${matchedExpr}, NULL
      FROM l2 WHERE valid = 1 AND k <> '' AND pid <> 'cowork' ORDER BY row_no`

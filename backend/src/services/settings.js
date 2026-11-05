@@ -8,7 +8,7 @@ const secrets = require('./secrets');
 
 // Keys stored encrypted. GET shows them as {set: bool}; server code uses getSecret().
 const SECRET_KEYS = new Set(['powerbi.client_secret', 'powerbi.token', 'ad.bind_password', 'anthropic.api_key', 'openai.admin_key', 'openai.enterprise_key',
-  'cowork.client_secret', 'cowork.refresh_token', 'github.token']);
+  'cowork.client_secret', 'cowork.refresh_token', 'github.token', 'bedrock.secret_access_key', 'bedrock.session_token']);
 
 const intRange = (name, lo, hi) => (v) => {
   const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v;
@@ -40,6 +40,12 @@ const bool = (name) => (v) => {
 const coworkBase = (name, v) => {
   const t = text(name, 300)(v).replace(/\/+$/, '');
   if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest(`${name} must be an http or https URL`);
+  return t;
+};
+// Blank = the AWS endpoint; otherwise an http or https URL (tests and proxies).
+const bedrockEndpoint = (name) => (v) => {
+  const t = text(name, 300)(v).replace(/\/+$/, '');
+  if (t && !/^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(t)) throw badRequest(`${name} must be blank or an http or https URL`);
   return t;
 };
 const PBI_TABLE_KEYS = ['usage', 'people', 'seat_rate', 'region_map', 'lob_cg_map'];
@@ -116,6 +122,41 @@ const VALIDATORS = {
   'github.dollars_mode': oneOf('github.dollars_mode', ['allocate', 'per_user']),
   'github.map_teams': bool('github.map_teams'),
   'github.calls_per_hour': intRange('github.calls_per_hour', 500, 14000),
+  'bedrock.enabled': bool('bedrock.enabled'),
+  'bedrock.access_key_id': text('bedrock.access_key_id', 128, /^[A-Za-z0-9]+$/),
+  'bedrock.role_arn': text('bedrock.role_arn', 2048, /^arn:aws[a-z-]*:iam::\d{12}:role\/[A-Za-z0-9+=,.@_\/-]+$/),
+  'bedrock.region': (v) => {
+    const t = text('bedrock.region', 30, /^[a-z]{2}(-[a-z]+)+-\d$/)(v);
+    if (!t) throw badRequest('bedrock.region is required');
+    return t;
+  },
+  'bedrock.log_group': text('bedrock.log_group', 512, /^[A-Za-z0-9_.\/#-]+$/),
+  'bedrock.identity_rule': oneOf('bedrock.identity_rule', ['session', 'metadata']),
+  'bedrock.metadata_user_key': (v) => {
+    const t = text('bedrock.metadata_user_key', 128, /^[A-Za-z0-9_.:-]+$/)(v);
+    if (!t) throw badRequest('bedrock.metadata_user_key is required');
+    return t;
+  },
+  'bedrock.cost_services': (v) => {
+    const raw = Array.isArray(v) ? v.join('\n') : v;
+    const t = text('bedrock.cost_services', 2000)(raw);
+    const list = t.split(/[\r\n]+/).map((x) => x.trim()).filter(Boolean);
+    if (!list.length) throw badRequest('bedrock.cost_services needs at least one service name');
+    for (const x of list) if (x.length > 120) throw badRequest('bedrock.cost_services has a service name that is too long');
+    return list.join('\n');
+  },
+  'bedrock.rebuild_days': intRange('bedrock.rebuild_days', 1, 31),
+  'bedrock.history_floor': (v) => {
+    const t = text('bedrock.history_floor', 10)(v);
+    if (t === '') return '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(t) || Number.isNaN(Date.parse(`${t}T00:00:00Z`))) throw badRequest('bedrock.history_floor must be blank or a date (YYYY-MM-DD)');
+    return t;
+  },
+  'bedrock.endpoint_logs': bedrockEndpoint('bedrock.endpoint_logs'),
+  'bedrock.endpoint_ce': bedrockEndpoint('bedrock.endpoint_ce'),
+  'bedrock.endpoint_cloudwatch': bedrockEndpoint('bedrock.endpoint_cloudwatch'),
+  'bedrock.endpoint_sts': bedrockEndpoint('bedrock.endpoint_sts'),
+  'bedrock.endpoint_bedrock': bedrockEndpoint('bedrock.endpoint_bedrock'),
   'ad.enabled': bool('ad.enabled'),
   'ad.domain': (v) => text('ad.domain', 253, /^[A-Za-z0-9._-]+$/)(v).toLowerCase(),
   'ad.bind_user': text('ad.bind_user', 256),

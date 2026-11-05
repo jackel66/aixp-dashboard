@@ -31,7 +31,7 @@ test('output uses primer column names and covers every platform', () => {
   const names = new Set(fx.usage.map((r) => r.Platform));
   for (const p of PLATFORMS) assert.ok(names.has(p.name), `missing ${p.name}`);
   assert.equal(fx.regionMap.length, 12);
-  assert.equal(fx.seatRate.length, PLATFORMS.length * 3);
+  assert.equal(fx.seatRate.length, (PLATFORMS.length - 1) * 3);
 });
 
 test('clean profile has no defect flags; defective has all', () => {

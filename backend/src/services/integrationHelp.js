@@ -192,6 +192,43 @@ const INTEGRATIONS = [
     where: 'Settings > Data source > Vendor connectors > Microsoft Copilot Cowork. Enter tenant id, client id and client secret, then press Sign in as administrator; Test connection checks the app sign-in, the Copilot report, the user lookup, the administrator sign-in, one user balance and the tenant balance.',
     notes: ['The Cowork usage report (tasks, active days) has no credits column; the credits report has no task detail.'],
   },
+  {
+    id: 'bedrock',
+    name: 'AWS Bedrock (invocation logs, Cost Explorer, CloudWatch)',
+    status: 'built',
+    kind: 'vendor',
+    summary: 'Per user, per model and per day tokens come from the Bedrock model invocation logs in CloudWatch Logs; dollars come from Cost Explorer per usage type and are spread over users by token share.',
+    urls: [
+      { label: 'CloudWatch Logs', value: 'https://logs.<region>.amazonaws.com (StartQuery and GetQueryResults on the invocation log group)' },
+      { label: 'Cost Explorer', value: 'https://ce.us-east-1.amazonaws.com (GetCostAndUsage, always us-east-1)' },
+      { label: 'CloudWatch metrics', value: 'https://monitoring.<region>.amazonaws.com (AWS/Bedrock metrics by ModelId, used when no log group is set)' },
+      { label: 'STS', value: 'https://sts.<region>.amazonaws.com (GetCallerIdentity, and AssumeRole when a role is used)' },
+      { label: 'Bedrock', value: 'https://bedrock.<region>.amazonaws.com (GetModelInvocationLoggingConfiguration)' },
+    ],
+    ports: OUTBOUND + ' Hosts: logs.<region>.amazonaws.com, ce.us-east-1.amazonaws.com, monitoring.<region>.amazonaws.com, sts.<region>.amazonaws.com and bedrock.<region>.amazonaws.com.',
+    credentials: [
+      'An IAM user access key (access key id and secret) with the read-only permissions below, created by an AWS administrator.',
+      'Or an IAM role to assume: the same key calls sts:AssumeRole on the role ARN (session name aixp-dashboard) and the role holds the permissions. Pasted temporary keys also need the session token and expire.',
+    ],
+    permissions: [
+      'logs:StartQuery, logs:GetQueryResults, logs:StopQuery and logs:DescribeLogGroups on the invocation log group.',
+      'ce:GetCostAndUsage for the dollars.',
+      'cloudwatch:ListMetrics and cloudwatch:GetMetricData for the metrics fallback.',
+      'sts:GetCallerIdentity, and sts:AssumeRole when a role is used.',
+      'bedrock:GetModelInvocationLoggingConfiguration, so Test connection can confirm logging is on.',
+    ],
+    limits: [
+      'Logs Insights allows 10 StartQuery calls a second and returns up to 100,000 rows a query; the connector queries 7-day chunks and re-runs a full chunk one day at a time.',
+      'Invocation logs start on the day logging was switched on and cannot be backfilled. Cost Explorer keeps 14 months, and its figures can take 24 hours to appear.',
+      'AWS has no per-user dollars: they are an allocation by token share and are marked as allocated. Models billed through AWS Marketplace may sit under another Cost Explorer service line than Amazon Bedrock (list them under Advanced).',
+    ],
+    where: 'Settings > Data source > Vendor connectors > AWS Bedrock, and the Bedrock console (Settings > Model invocation logging) to turn logging on with CloudWatch Logs as the destination. Test connection checks the credentials, the logging configuration, the log group and its first event, one day of the query, Cost Explorer and the metrics.',
+    notes: [
+      'Logs start at enablement. Calls through the bedrock-mantle endpoints (Responses and Chat Completions) are not logged.',
+      'Per-user dollars are an allocation: each day\'s Cost Explorer dollars for a model are spread over that day\'s users by token share.',
+      'The person key comes from the session name in the caller ARN (assumed-role/<role>/<session>) or an IAM user name; the role name becomes the vendor organization. Whether the session name identifies a person depends on how callers assume the role and is unverified until a real log sample is read.',
+    ],
+  },
 ];
 
 function list() {

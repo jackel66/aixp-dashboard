@@ -24,6 +24,7 @@ const ROUTES = [
   ['platform-openai', '/api/platforms/openai'],
   ['platform-github', '/api/platforms/github'],
   ['platform-cowork', '/api/platforms/cowork'],
+  ['platform-bedrock', '/api/platforms/bedrock'],
   ['organization', '/api/organization?dim=lob_cg'],
   ['organization-cell', '/api/organization/cell?dim=lob_cg&key=__unmatched__&platform=anthropic'],
   ['models', '/api/models'],

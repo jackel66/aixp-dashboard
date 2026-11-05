@@ -20,7 +20,7 @@ test('rollup sums equal usage sums per platform and dataset', () => {
          JOIN (SELECT platform, sum(cost_usd) c, sum(tokens) t, count(*) n FROM usage WHERE dataset_id = ? GROUP BY platform) u
          ON u.platform = r.platform`
     ).all(datasetId, datasetId);
-    assert.equal(rows.length, 4, t);
+    assert.equal(rows.length, 5, t);
     for (const r of rows) {
       close(r.rc, r.uc, `${t} cost ${r.platform}`);
       close(r.rt, r.ut, `${t} tokens ${r.platform}`);

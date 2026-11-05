@@ -43,7 +43,14 @@ const MODELS = {
     { name: 'gpt-5-mini', rate: 1e-6, weight: 1.5 },
     { name: 'o3', rate: 1.5e-5, weight: 0.5 },
   ],
+  bedrock: [
+    { name: 'anthropic.claude-sonnet-4-5', rate: 6e-6, weight: 1.0 },
+    { name: 'anthropic.claude-haiku-4-5', rate: 2e-6, weight: 1.4 },
+    { name: 'amazon.nova-pro-v1', rate: 3.2e-6, weight: 0.8 },
+    { name: 'meta.llama3-3-70b-instruct', rate: 7e-7, weight: 0.6 },
+  ],
 };
+const BEDROCK_SCALE = 2.4;
 const SWAP_MODEL = 'o3';
 
 const SEAT = {
@@ -192,6 +199,10 @@ function generate(opts = {}) {
     const adopt = { anthropic: r() < 0.7, openai: r() < 0.55, github: r() < 0.85, cowork: r() < 0.5 };
     const modelMask = { anthropic: 1 + Math.floor(r() * 7), openai: 1 + Math.floor(r() * 7) };
     if (!adopt.anthropic && !adopt.openai && !adopt.github && !adopt.cowork) adopt.github = true;
+    // Bedrock uses its own rng stream so the draws above (and every existing platform) stay unchanged.
+    const rb = rngFor(seed, 8, i);
+    adopt.bedrock = rb() < 0.25;
+    modelMask.bedrock = 1 + Math.floor(rb() * 15);
     persons.push({
       i, ghost, key, email, first, last, display: `${first} ${last}`,
       userId: `U${2000000 + i}`,
@@ -292,9 +303,9 @@ function generate(opts = {}) {
       const wf = WEEKDAY_FACTOR[dd.wd];
 
       // Anthropic and OpenAI (token platforms).
-      for (const pid of ['anthropic', 'openai']) {
+      for (const pid of ['anthropic', 'openai', 'bedrock']) {
         if (!p.adopt[pid]) continue;
-        const r = rngFor(seed, pid === 'anthropic' ? 10 : 20, p.i, dd.idx);
+        const r = rngFor(seed, pid === 'anthropic' ? 10 : pid === 'openai' ? 20 : 50, p.i, dd.idx);
         if (r() >= p.baseP * wf * (pid === 'anthropic' ? 1.05 : 0.9)) continue;
         const list = MODELS[pid];
         let emitted = 0;
@@ -307,7 +318,7 @@ function generate(opts = {}) {
           const lastModel = m === list.length - 1;
           if (!keep && !(lastModel && emitted === 0)) continue;
           emitted += 1;
-          const tokens = Math.max(1000, Math.round(Math.exp(Math.log(110000 * p.heavy * list[m].weight) + 0.8 * z)));
+          const tokens = Math.max(1000, Math.round(Math.exp(Math.log(110000 * (pid === 'bedrock' ? BEDROCK_SCALE : 1) * p.heavy * list[m].weight) + 0.8 * z)));
           let cost = round(tokens * list[m].rate * noise, 6);
           let tk = tokens;
           let credits;
@@ -318,7 +329,7 @@ function generate(opts = {}) {
           }
           tokenRow(pid, p, d, list[m], tk, cost, {
             credits,
-            requests: pid === 'anthropic' ? Math.max(1, Math.round(tokens / (4000 + 8000 * r()))) : undefined,
+            requests: pid === 'anthropic' || pid === 'bedrock' ? Math.max(1, Math.round(tokens / (4000 + 8000 * r()))) : undefined,
           });
         }
       }
@@ -434,6 +445,7 @@ function generate(opts = {}) {
   // ---- seat rates, region map, LOB map ----
   const seatRate = [];
   for (const pl of PLATFORMS) {
+    if (!SEAT[pl.id]) continue; // no seats on usage-billed platforms (bedrock)
     allMonths.forEach((ym, mi) => {
       const grow = allMonths.length > 1 ? 0.9 + (0.1 * mi) / (allMonths.length - 1) : 1;
       seatRate.push({

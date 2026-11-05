@@ -11,7 +11,7 @@ function load(name) {
     throw e;
   }
 }
-const MODULES = [require('./anthropic'), load('./github'), load('./openai'), load('./cowork')].filter(Boolean);
+const MODULES = [require('./anthropic'), load('./github'), load('./openai'), load('./cowork'), load('./bedrock')].filter(Boolean);
 
 function problemsOf(c) {
   try { return c.problems(); } catch (e) { return [e.message]; }

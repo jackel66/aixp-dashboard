@@ -39,7 +39,7 @@ export default function PlatformPage() {
     return (
       <div className="page">
         {header}
-        <EmptyState title="That platform does not exist" body="Pick one of the four platforms above." action={<Button as="a" href="/platforms/anthropic">Open Anthropic</Button>} />
+        <EmptyState title="That platform does not exist" body="Pick one of the platforms above." action={<Button as="a" href="/platforms/anthropic">Open Anthropic</Button>} />
       </div>
     );
   }

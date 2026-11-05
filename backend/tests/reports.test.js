@@ -33,7 +33,7 @@ test('every route answers with the contract keys', async () => {
   for (const k of ['asOf', 'dataset', 'range', 'headline', 'platforms', 'totals', 'confidence', 'caveat']) assert.ok(k in s, `summary.${k}`);
   assert.deepEqual(keys(s.headline), ['period', 'prior', 'spend']);
   assert.deepEqual(keys(s.headline.spend), ['consumption', 'seat', 'total']);
-  assert.equal(s.platforms.length, 4);
+  assert.equal(s.platforms.length, 5);
   for (const p of s.platforms) {
     for (const k of ['id', 'name', 'unit', 'as_of', 'lag_days', 'stale', 'rows', 'spend', 'consumption', 'active_users', 'models_supported', 'spark']) assert.ok(k in p, `platform.${k}`);
     assert.equal(p.spark.length, 30);
@@ -122,7 +122,7 @@ test('basis math: total = consumption + seat, seat prorated, spend equals usage 
 
 test('units are never merged across platforms', async () => {
   const s = (await app.call('GET', '/api/summary')).json;
-  for (const p of s.platforms) assert.equal(p.consumption.unit, p.id === 'anthropic' || p.id === 'openai' ? 'tokens' : 'credits');
+  for (const p of s.platforms) assert.equal(p.consumption.unit, ['anthropic', 'openai', 'bedrock'].includes(p.id) ? 'tokens' : 'credits');
   assert.equal(s.totals.consumption, undefined);
   const o = (await app.call('GET', '/api/organization?dim=region')).json;
   assert.equal(o.totals.total.consumption, undefined);
