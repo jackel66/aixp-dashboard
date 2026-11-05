@@ -1522,3 +1522,240 @@ Frontend (owner P):
 - Mocks: help-integrations.json (copy of the catalogue through the API shape).
 - Build green, ASCII scan, screenshots light and dark of the Help page (filtered to
   Planned too), one Requirements fold open on the Anthropic card.
+
+## 18. Remaining connectors and the Help rail (addendum 2026-11-05, builders R frontend, S GitHub, T OpenAI, U Microsoft)
+
+Purpose (Doug): build GitHub Copilot, OpenAI and Microsoft Copilot Cowork blind on the
+section 16 framework, and stop the Help page from being one long scroll. Research with
+every endpoint, field and UNVERIFIED label is in
+C:\Users\Dougl\.claude\skills\aixp-vendor-pull-plan\references\ (github-copilot.md,
+openai.md, microsoft-copilot.md); each builder reads their report before writing the
+client. The Anthropic connector (connectors/anthropic.js, anthropicClient.js, window.js,
+the test with its fake server) is the template for shape, pacing, retries, test() steps
+and the pull() return value. Connectors stay email- or login-keyed; vendorImport resolves
+PersonKey (email -> People person_key; a GitHub login is matched against people.user_id
+lowercased, then against the email local part, else stays the login).
+
+### 18.1 Generic connector card and actions (owner R, with a small registry change by S)
+
+describe() grows: {fields, limits, lag, history_floor, help: [sentence, ...], actions:
+[{key, label, kind: 'devicecode'}] (optional)}. Field: {key (full settings key), label,
+type 'secret' | 'text' | 'number' | 'boolean' | 'select' | 'textarea', hint, advanced,
+min, max, options: [{value, label}] for select, placeholder, required}. ConnectorCard
+renders EVERY field from describe() (nothing hard-coded for anthropic any more): secret
+fields through SecretField with the "Remove the stored key on save" checkbox, numbers
+with min and max validation, booleans as checkboxes, selects as a select, advanced ones
+inside the Advanced fold; the patch carries only changed keys; help sentences print
+under the fields; RequirementsFold id = c.id; status chip and Test connection as today.
+Actions of kind devicecode render a "Sign in as administrator" button: POST
+/api/vendors/:id/actions/:key starts the flow and answers {user_code, verification_uri,
+expires_in, message}; the card shows the code and link and polls GET
+/api/vendors/:id/actions/:key every 5 s until {state: 'done' | 'error' | 'pending',
+detail} (done shows the signed-in account from detail, error the reason). The connector
+card for a connector with no secret field set shows the first missing field in the
+Missing line as today.
+
+### 18.2 Help rail (owner R)
+
+The Help page becomes a left rail plus one integration at a time, in the Settings page
+style (rail list of integration names, a status dot built | planned, the rail item for
+the selected one highlighted); selection in ?tab=<id> (default the first built entry);
+#<id> hashes from older links select that tab; the All | Built | Planned chips filter the
+rail list; the content pane renders the selected entry's blocks and Copy as text, with a
+Previous and Next link pair at the bottom. RequirementsFold "Open help" links go to
+/help?tab=<id>. Mobile widths stack the rail above the content as a select.
+
+### 18.3 GitHub Copilot connector (connectors/github.js + githubClient.js, owner S; id 'github', platform 'github')
+
+Settings (defaults.js, validators): github.enabled false, github.token SECRET (fine-grained
+PAT or GitHub App installation token; the app installation flow is not built, a token is
+pasted), github.enterprise '' (enterprise slug, required), github.orgs '' (comma or
+space separated organization logins, required for seats and teams; the enterprise
+organization list endpoint was not verified, so it is typed), github.base_url
+'https://api.github.com', github.rebuild_days 3 (1..31), github.dollars_mode 'allocate' |
+'per_user' (default allocate), github.map_teams true, github.calls_per_hour 4000
+(500..14000). Facts (binding): Authorization: Bearer <token>, Accept
+application/vnd.github+json, X-GitHub-Api-Version 2022-11-28; rate limit headers
+X-RateLimit-Remaining and X-RateLimit-Reset honoured (sleep to reset when remaining < 50);
+429 or 403 with Retry-After retried three times; pagination by the Link header (per_page
+100). Data lag: the metrics reports are available two full UTC days after the day
+closes, so the window `to` is today minus 2 days (UTC) and rebuild_days 3.
+
+pull() per day D in the window:
+1. Credits per user: GET /enterprises/{enterprise}/copilot/metrics/reports/users-1-day?day=D
+   -> {download_links: [url...]} -> fetch each url (NDJSON, one record per user per
+   line) -> user_login (lowercase, strip a trailing _capgroup), ai_credits_used,
+   used_* flags, totals_by_model_feature (kept per model in vendor_usage_detail with
+   product = feature, credits per model are NOT reported, so detail rows carry the
+   interaction counts in requests and credits only on a single product 'all'). Usage row:
+   Date D, PersonKey login, Platform github, Model '' (the app's GitHub platform has no
+   model), Credits ai_credits_used, ConsumptionUnit credits, Requests
+   user_initiated_interaction_count. A 404 on the report means that day is not ready yet:
+   stop the window there and note it (do not fail the pull).
+2. Dollars: GET /enterprises/{enterprise}/settings/billing/usage?year=&month=&day=D (and,
+   when github.orgs is set, the same per organization through
+   /organizations/{org}/settings/billing/usage so cost-center usage is not missed; dedupe
+   by organizationName) -> usageItems with product, sku, quantity, unitType,
+   pricePerUnit, grossAmount, discountAmount, netAmount. Keep rows whose product (lower)
+   contains 'copilot'. Sum gross, discount and net for the day. dollars_mode 'allocate':
+   spread the day's gross, discount and net across the day's users by ai_credits_used
+   share (cost_source 'allocated'); a day with dollars and no credits gets one row
+   PersonKey 'github:unattributed'; a day with credits and no billing rows yet keeps
+   cost blank. dollars_mode 'per_user': for every login seen in the window and every
+   month the window touches, GET
+   /enterprises/{enterprise}/settings/billing/premium_request/usage?user=<login>&year=&month=
+   -> usageItems per model {grossQuantity, grossAmount, discountAmount, netAmount};
+   write those as Date = first day of the month, Model = item.model, Credits =
+   grossQuantity, CostUSD gross, discount and net (cost_source 'vendor') and drop the
+   allocated rows for that login and month; budget the calls against
+   github.calls_per_hour and stop with a note when exhausted (the rest of the window
+   stays allocated).
+3. Orgs (github.map_teams): for each org in github.orgs, GET /orgs/{org}/teams (paged,
+   cap 200 teams) and GET /orgs/{org}/teams/{slug}/members (paged) -> vendor org values
+   "<org>/<team name>" with members {person_key login, display_name login}. Seats:
+   GET /orgs/{org}/copilot/billing/seats (paged) -> count per org, reported in coverage
+   as licensed_seats (not written to seat_rate in this round).
+4. coverage: {org_total_usd: sum of billing gross in the window, user_rows_usd: sum of
+   attributed rows, data_refreshed_at: the newest ready report day}.
+
+test(): auth (GET /user or /rate_limit -> login and remaining), enterprise (GET
+/enterprises/{enterprise}/settings/billing/usage for the current month, first page; 403
+detail quotes the body), metrics (users-1-day for today minus 3 -> link count), orgs
+(GET /orgs/{org} for each listed org), seats (count per org), rate (remaining and reset
+time). Fake server in tests/connectors.github.test.js: the four endpoint families with
+Link pagination, a 404 for a not-ready day, X-RateLimit headers and one 403 Retry-After,
+NDJSON report bodies served from a second route the download_links point at; asserts the
+login normalisation, allocation sums equal the billing totals, per_user mode replacing
+allocated rows for one month, the not-ready day stopping the window, orgs values and
+members, coverage, end to end pull with carry-over, test() steps on a missing token, a
+401 and a good token.
+
+### 18.4 OpenAI connector (connectors/openai.js + openaiClient.js, owner T; id 'openai', platform 'openai')
+
+Two sub-sources in one connector, each active when its key is set:
+
+A. API platform. Settings: openai.enabled false, openai.admin_key SECRET (Admin API key
+from platform.openai.com > Settings > Organization > Admin keys), openai.base_url
+'https://api.openai.com', openai.rebuild_days 3. Facts (binding, from the report): GET
+/v1/organization/usage/completions?start_time=<unix>&end_time=<unix>&bucket_width=1d&limit=31
+&group_by[]=user_id&group_by[]=model (+page) -> {data: [{start_time, end_time, results:
+[{input_tokens, output_tokens, input_cached_tokens, num_model_requests, user_id, model}]}],
+has_more, next_page}; GET /v1/organization/costs?start_time&end_time&bucket_width=1d&limit=180
+&group_by[]=user_id (+page) -> results [{amount: {value, currency}, user_id, line_item}];
+if the costs call answers 400 for group_by user_id, retry grouped by line_item only and
+record "costs are not attributable per user on this organization" (the per-user grouping
+is unverified live). GET /v1/organization/users?limit=100&after= -> {data: [{id, email,
+name, user: {email}}]} for user_id -> email (fallback nested user.email, else key
+"openai:<user_id>"). Rows: per user, model and day from usage (Tokens = input_tokens +
+output_tokens, Requests = num_model_requests); CostUSD per user-day from costs
+allocated across that user's models by token share (cost_source 'allocated'); a cost row
+with a user_id the usage has no rows for gets Model 'unattributed'. Pace 500 ms between
+calls, 429 Retry-After honoured. Window floor: none known; months_back applies.
+
+B. ChatGPT Enterprise credits (the current CSV). Settings: openai.enterprise_key SECRET
+(workspace Admin key, prefix sk-admin-, with "Compliance logging platform > Costs >
+Read"), openai.enterprise_org_id '' (org-... id), openai.enterprise_base_url
+'https://api.chatgpt.com', openai.enterprise_costs_path
+'/v1/compliance/organizations/{org_id}/costs' (advanced; UNVERIFIED default, the path was
+not published; {org_id} substituted), openai.enterprise_rate '' (USD per credit for
+reference only, not used in rows). Client: GET base + path with query after=<ISO>,
+limit=500 (and page cursors from next_page, last_end_time or has_more + after, whichever
+the answer carries); the parser is shape-tolerant: rows under data (array) or the body
+itself; per row it finds, by case-insensitive key name search over flattened keys, the
+user email (user_email, email, user.email, actor.email), the timestamp (timestamp,
+start_time, hour, created_at, date), the model (model), tokens (total_tokens, else
+input_tokens + output_tokens), credits (billing_cost_value, credits, cost_credits,
+credit_amount), USD (billing_estimated_cost_usd_value, estimated_cost_usd, cost_usd,
+amount.value); it rolls hours to UTC days and sums per user, model, day; Credits and
+CostUSD stay separate (the USD is an estimate at list rate, cost_source 'vendor'). The
+first raw record's KEY NAMES (never values) are kept in the test detail and the pull log
+so the fix loop can see the shape. Retention is 30 days with no backfill: the window
+floor for this sub-source is today minus 30 days; older openai rows stay through the
+carry-over rule.
+
+test(): api_auth (GET /v1/organization/users?limit=1), usage (one day), costs (one day;
+notes whether group_by user_id was accepted), ent_auth (one page of the costs path; a
+404 says "costs path not found, set openai.enterprise_costs_path"), ent_shape (the key
+names found and which app columns they mapped to). Fake server in
+tests/connectors.openai.test.js serving both hosts (two express apps on port 0): usage
+and costs with paging and the 400-on-user_id branch, users with the nested email
+fallback, the Enterprise costs path with hourly rows in a plausible shape; asserts the
+token-share allocation (sum of allocated equals the cost), both sub-sources landing on
+the openai platform with distinct cost_source, the 30-day floor, test() steps, end to
+end pull with carry-over.
+
+### 18.5 Microsoft Copilot Cowork connector (connectors/cowork.js + graphClient.js, owner U; id 'cowork', platform 'cowork')
+
+Settings: cowork.enabled false, cowork.tenant_id '', cowork.client_id '', cowork.client_secret
+SECRET (Entra app, application permission Reports.Read.All and User.Read.All for the
+user lookup), cowork.refresh_token SECRET (written by the device code flow, never typed),
+cowork.service_ids '' (comma list of serviceId values to count, blank = every service;
+unverified names such as workIQ or cowork), cowork.graph_base 'https://graph.microsoft.com'
+(advanced), cowork.login_base 'https://login.microsoftonline.com' (advanced),
+cowork.users_source 'copilot_report' | 'all_licensed' (default copilot_report). The
+existing cowork.rate setting (USD per credit) stays the only USD source: the connector
+writes Credits and normalize derives CostUSD as today (cost_source 'derived').
+
+Facts (binding): app-only token POST {login_base}/{tenant}/oauth2/v2.0/token
+grant_type=client_credentials scope https://graph.microsoft.com/.default. Device code
+flow for the delegated permission: POST {login_base}/{tenant}/oauth2/v2.0/devicecode with
+client_id and scope "offline_access https://graph.microsoft.com/CopilotCostManagement-UserData.Read.All
+https://graph.microsoft.com/CopilotCostManagement.Read.All https://graph.microsoft.com/User.Read"
+-> {user_code, verification_uri, device_code, interval, expires_in}; poll POST
+.../token grant_type=urn:ietf:params:oauth:grant-type:device_code until access_token
+(authorization_pending keeps polling, expired_token or access_denied ends with error);
+store refresh_token encrypted; later refresh with grant_type=refresh_token (a new
+refresh_token in the answer replaces the stored one). The app registration must allow
+public client flows (the help entry says so). Reports: GET
+{graph_base}/v1.0/reports/getMicrosoft365CopilotUsageUserDetail(period='D30') (CSV
+stream; columns include User Principal Name, Display Name, Last Activity Date; the newer
+/copilot/reports path is tried first and the /reports path second) -> the user list and
+last activity; concealed names look like hex strings: detect (all users match
+^[0-9a-f]{16,}$) and report "names are concealed in the admin center reports setting"
+in the test. Users: GET {graph_base}/v1.0/users?$select=id,userPrincipalName,mail,displayName,department,companyName,officeLocation&$filter=userPrincipalName eq '<upn>'
+through $batch (20 per request) to resolve ids and org attributes. Balances
+(delegated token): GET {graph_base}/beta/copilot/costManagement/userBalances/{id}?$expand=serviceBalances
+-> serviceBalances[] {serviceId, consumedQuantity, unit, dataStatus.lastModifiedDateTime}.
+Throttling: 429 and 503 with Retry-After honoured, pace 200 ms, $batch where possible.
+
+pull(): one snapshot per run: Date = run date (UTC), per user Credits = sum of
+consumedQuantity over the selected serviceIds (consumedQuantity has NO documented period;
+the row is treated as the month-to-date cumulative figure exactly like the legacy
+"Monthly credits used" export, and normalize's Cowork rule keeps the latest snapshot per
+person and month), ConsumptionUnit credits, Model ''; detail rows per serviceId (product
+= serviceId); orgs = Entra department values (and companyName when present) with their
+members; coverage = {org_total_usd: null, user_rows_usd: null, data_refreshed_at: the
+newest dataStatus.lastModifiedDateTime, tenant_balance: getTenantCreditBalance when the
+delegated token holds CopilotCostManagement.Read.All}. No history back-fill exists for
+this source (stated in describe().limits); months_back does not apply.
+
+test(): app_auth (client credentials token), report (user count from the Copilot usage
+report and whether names are concealed), users (how many resolved to ids), admin_signin
+(refresh token present and refreshes; otherwise "Sign in as administrator first"),
+balances (one user's serviceBalances summary), tenant_balance. describe().actions =
+[{key: 'devicecode', label: 'Sign in as administrator', kind: 'devicecode'}]; routes POST
+/api/vendors/:id/actions/:key and GET /api/vendors/:id/actions/:key (owner U, in
+routes/vendors.js) dispatch to the connector's actions.devicecode.start() and .status().
+Fake servers in tests/connectors.cowork.test.js: login (client credentials, device code
+pending then success, refresh), graph (report CSV, users $batch, userBalances per id,
+getTenantCreditBalance, one 429); asserts the device code flow storing the refresh token
+encrypted, the snapshot rows, concealed-name detection, service filter, orgs from
+departments, normalize keeping the latest snapshot per person-month across two pulls,
+test() steps with and without the delegated token.
+
+### 18.6 Shared
+
+- Registry: connectors/index.js MODULES lists anthropic, github, openai, cowork (S adds
+  the three requires after the builders agree the file names: github.js, openai.js,
+  cowork.js).
+- integrationHelp.js: each builder flips their entry's status to 'built' and updates
+  "where" to the connector card, keeping every other sentence; U adds the public-client
+  flow sentence to the cowork entry's permissions. help.test.js keeps passing (built ids
+  equal the registry plus powerbi and ad).
+- vendorImport PersonKey resolution for logins (18 intro) is S's change in
+  activeCopy.emailToPersonKey (a second map user_id -> person_key and email local part
+  -> person_key, applied when the row has no email).
+- The scoped smoke pass, the admin smoke pass, the full suite, the frontend build and
+  the ASCII scan are green; screenshots light and dark of the Help rail (built and planned
+  entries), the generic connector cards for all four connectors, and the Cowork device
+  code panel (mocked).
