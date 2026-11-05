@@ -1221,3 +1221,264 @@ data.all gate on verification evidence.
 - live: pm2 aixp-dashboard restarted; as admin create the LOB manager role, a local user
   with it and one LOB grant, sign in as that user on localhost:3090 and confirm the
   figures match the admin's Organization row for that LOB; commit on dev; push.
+
+## 16. Vendor connectors: framework, Anthropic Enterprise, org correlation (addendum 2026-11-04, builders M connector backend, N org correlation backend, O frontend)
+
+Purpose (Doug, 2026-11-04): the CSV-to-Power-BI path is manual; CG wants near-real-time
+usage with no manual pulls, pulled from each vendor's API. The connectors replace that path
+over time; the Power BI connector stays until each vendor reconciles. Vendor org fields are
+wanted and must map to CG LOB-CG values with a method that tolerates spelling differences.
+Built BLIND: no key exists yet; the Test connection checklist is the fix loop on the first
+real key. Research with every endpoint, parameter and field (URLs and read dates) is in
+C:\Users\Dougl\.claude\skills\aixp-vendor-pull-plan\references\anthropic.md; builder M reads
+it before writing the client. This round covers the framework, the Anthropic Enterprise
+connector and the org correlation layer. GitHub, OpenAI and Microsoft are later rounds that
+plug into the same framework.
+
+### 16.1 Connector framework (backend/src/services/connectors/, owner M)
+
+connectors/index.js is a registry: list() -> [{id, label, platform, enabled, configured,
+problems}], get(id). A connector module exports:
+- id ('anthropic'), label ('Anthropic Claude Enterprise'), platform ('anthropic', the
+  PLATFORMS id its usage rows carry), describe() -> {fields, limits, lag, history_floor},
+- problems() -> [missing config names] (empty = configured),
+- test() -> {ok, duration_ms, steps: [{key, ok, label, detail}]} never throws on
+  configuration (first step fails with the reason), same shape the Power BI test renders,
+- pull({from, to, log, progress}) -> {usage: [rows in primer column names], detail:
+  [rows for vendor_usage_detail], orgs: {values: [{value, people: [{person_key, email,
+  display_name}]}]}, coverage: {org_total_usd, user_rows_usd, data_refreshed_at}}.
+
+services/vendorImport.js runs ONE pull for every enabled connector into ONE dataset,
+mirroring powerbiImport.pull: refuse 409 while a Power BI or vendor pull runs (shared
+running flag in a tiny services/importLock.js both importers use); create the dataset
+(source 'import', options {provider: 'vendor', connectors: [ids], from, to, asOf});
+progress events import.progress gain {vendor} (stages auth|usage|carry|people|lookups|
+normalize|verify|promote|done|error); for each connector pull its window and stage its
+usage rows; CARRY-OVER: platforms with no enabled connector copy their usage rows from the
+ACTIVE dataset's normalized usage table back into primer columns (Date, PersonKey,
+Platform, Model, Tokens, Credits, Consumption, ConsumptionUnit, CostUSD, Requests,
+discount_amount, net_amount) so GitHub, OpenAI and Cowork keep their last CSV rows until
+their connectors exist; people and the three lookups are copied from the active dataset
+exactly like powerbiImport.activeCopy (shared helper moved to services/activeCopy.js and
+used by both importers); then staging.loadTables, normalize, verify, promote by
+vendors.auto_promote, purge; vendors.last_pull_at and vendors.last_pull {dataset_id,
+verdict, rows, duration_ms, error, by_vendor: {id: {rows, usd, from, to,
+data_refreshed_at, coverage}}} saved and broadcast like Power BI. A connector that throws
+fails the whole pull (dataset marked failed with the vendor name in the note), no partial
+promote.
+
+Window: from = max(connector history_floor, first day of the month months_back months
+before today) when the active dataset has no rows from this provider for the platform,
+else max(history_floor, last pulled day - rebuild_days); to = now. Idempotence comes from
+the dataset model (a pull is a new dataset; carry-over copies unchanged platforms), so
+re-pulling the trailing window simply replaces those days for that platform.
+
+Schedule: services/vendorSchedule.js is powerbiSchedule.js generalised (same tick,
+catch-up and nextRunAt logic) reading vendors.schedule and vendors.last_pull_at; refactor
+powerbiSchedule to share the helpers (one file services/dailySchedule.js with
+makeSchedule({enabledKey, scheduleKey, lastKey, run})) rather than copy. Both start in
+server.js.
+
+Settings keys (defaults.js, validators): vendors.schedule '' | 'HH:MM', vendors.auto_promote
+true, vendors.months_back 13, vendors.last_pull_at, vendors.last_pull. Per connector:
+anthropic.enabled false, anthropic.api_key SECRET (add to SECRET_KEYS; GET /api/settings
+masks as {set}; '' keeps, null clears), anthropic.base_url 'https://api.anthropic.com'
+(validator: http(s) URL, trailing slash trimmed; exists so tests and a proxy can point it
+elsewhere), anthropic.anthropic_version '2026-10-21', anthropic.rebuild_days 9 (1..31),
+anthropic.history_floor '2026-01-01' (read-only in the UI, from describe()).
+
+Routes (routes/vendors.js, mounted at /api/vendors, data.manage like /powerbi):
+GET /api/vendors -> {connectors: list(), schedule, auto_promote, months_back, running,
+last_pull_at, last_pull, next_run_at}
+POST /api/vendors/:id/test -> the checklist
+POST /api/vendors/pull {ids?: [..], promote?: bool} -> {dataset_id, verdict, promoted,
+rows, duration_ms, by_vendor}; 409 while running; 400 when no enabled connector
+GET /api/vendors/detail?vendor=anthropic&from=&to=&person_key=&product= -> {rows} from
+vendor_usage_detail (people.view required: add the rule GET /vendors/detail -> people.view
+before the data.manage rule for /vendors)
+
+Table vendor_usage_detail (db.js, M's region): vendor, date, person_key, email, model,
+product, tokens REAL, cost_usd REAL, list_cost_usd REAL, requests INTEGER, pulled_at,
+PRIMARY KEY (vendor, date, person_key, model, product). Upserted by every pull for its
+window; this keeps the product breakdown the usage grain cannot hold (16.2). Not
+dataset-bound. Scope rule: the detail route applies scope.peopleWhere through a join to
+the active dataset's people like /users does (a scoped caller sees only their LOB).
+
+### 16.2 Anthropic Enterprise connector (connectors/anthropic.js + anthropicClient.js, owner M)
+
+Facts (binding, from the research): base https://api.anthropic.com, header x-api-key =
+the Analytics key (prefix sk-ant-api01-, scope read:analytics, created by the Enterprise
+primary owner at claude.ai > Organization settings > API), anthropic-version header,
+anthropic-beta: analytics-usage-cost-2026-08-24 on /analytics/cost and /analytics/usage.
+GET /v1/organizations/analytics/cost and GET /v1/organizations/analytics/usage with
+starting_at (RFC 3339 inclusive, on or after 2026-01-01, within 365 days), ending_at
+(exclusive, max span 31 days), time_bucket_width=1d, group_by[]=actor, group_by[]=model,
+group_by[]=product, actor_types[]=user_actor, limit=1000, page=<next_page>. Envelope
+{data, has_more, next_page, data_refreshed_at}. Cost row: starting_at, ending_at, group
+{actor {type, user_id, email_address, name, deleted}, model, product}, cost {amount,
+list_amount (decimal strings in FRACTIONAL CENTS, divide by 100 for USD), currency,
+requests}. Usage row: same keys, usage {uncached_input_tokens, cache_creation {...},
+cache_read_input_tokens, output_tokens, total_tokens, requests}. Product values: chat,
+chat_cowork_unified, claude_code, cowork, office_agent, claude_in_chrome, claude_design,
+claude_tag (response may spell claude-tag; normalise to underscore), other. Cursor rules:
+page must keep every other parameter; 410 means the cursor expired, restart that window
+from page one; 429 and 5xx retry three times with backoff; 401/403 stop with the body's
+error message. Rate limit 60 requests a minute per organization: pace calls at least
+1,000 ms apart. Lag: data_refreshed_at is the watermark (typically 4 h, up to 24 h);
+values revise until about 7 days after month end, hence rebuild_days 9. Groups: GET
+/v1/organizations/rbac_groups (scope read:rbac_groups, may be refused: then the step
+reports it and orgs are skipped) -> {data: [{id, name, source_type}]} and GET
+/v1/organizations/rbac_groups/{id}/members -> members with user ids and emails (shape
+UNVERIFIED: read user_id, email_address, name defensively, log the first raw member
+object once at debug). Org total: one unbucketed cost call for the window with NO group_by
+gives the organization total for the coverage figure.
+
+pull(): walk the window in 31-day slices; for each slice page /cost and /usage; join on
+(UTC day of starting_at, actor.user_id, model, product); SUM across product into the
+usage row grain (Date, PersonKey, Platform, Model) because the app's grain has no product
+column and the duplicate check would fail otherwise; keep the per-product rows for
+vendor_usage_detail. Row mapping: Date = YYYY-MM-DD of starting_at (UTC); PersonKey =
+email_address lowercased and trimmed, else "user:<user_id>" (flagged in the pull log,
+lands in Unmatched unless the People table carries that key); email = email_address;
+Platform = 'anthropic'; Model = group.model or 'unattributed' when null; Tokens =
+total_tokens; CostUSD = amount / 100; extra column ListCostUSD = list_amount / 100 (goes
+to stage extra_json); Requests = usage.requests; Credits blank; ConsumptionUnit 'tokens'.
+Rows whose actor is null are kept with PersonKey 'anthropic:unattributed'. orgs = each
+rbac group as a value with its members. coverage = {org_total_usd, user_rows_usd,
+data_refreshed_at}.
+
+test(): steps auth (GET /v1/organizations/rbac_groups or a one-day /analytics/cost call
+answers 200; 401/403 detail quotes the error), cost (first page of /analytics/cost for
+yesterday with the beta header; detail = rows and data_refreshed_at), usage (same for
+/analytics/usage), groups (count, or "read:rbac_groups not granted, org mapping skipped"),
+freshness (data_refreshed_at age in hours, ok under 24), floor (history_floor and the
+computed window). 200 even on failure.
+
+### 16.3 Verification additions (services/verify/, owner M for the first, N for the others)
+
+- vendor_coverage (info, platform anthropic): user rows USD vs organization total USD per
+  pull; message "User-attributed rows cover X% of the organization total"; evidence the
+  by_vendor coverage. Runs only on datasets with provider 'vendor'.
+- vendor_org_unmatched (warn): vendor org values with people and no LOB mapping; evidence
+  value, vendor, people count, suggestions.
+- vendor_org_disagreement (info): people from the extract whose vendor org maps to a
+  different LOB-CG than the extract says; evidence person_key, extract LOB, vendor org,
+  mapped LOB. Never changes the extract's value.
+
+### 16.4 Org correlation (services/orgCorrelation.js, routes/vendorOrgs.js, owner N)
+
+Tables (db.js, N's region):
+- vendor_org_values: id, vendor, value (as received), normalized, lob_cg (NULL = unmapped),
+  match_method ('exact' | 'normalized' | 'alias' | 'fuzzy_confirmed' | 'manual' | NULL),
+  score REAL, confirmed_by (users.id), confirmed_at, first_seen_at, last_seen_at,
+  people_count, UNIQUE(vendor, value).
+- vendor_org_aliases: id, alias (normalized form), lob_cg, created_by, created_at,
+  UNIQUE(alias).
+- vendor_org_people: vendor, person_key, email, display_name, value, seen_at, PRIMARY KEY
+  (vendor, person_key, value). A person may sit in several vendor groups (Anthropic
+  any-membership); when they map to different LOBs the FIRST mapped value by
+  lob_cg_sort wins and the row is listed under disagreement.
+- people gains origin TEXT NOT NULL DEFAULT 'extract' ('extract' | 'vendor') through the
+  guarded ALTER list in db.js.
+
+normalizeOrg(s): lowercase, trim, collapse whitespace, strip punctuation except spaces,
+drop filler tokens (the, and, of, dept, department, team, org, organisation,
+organization, group, lob, line of business, cg), collapse spaces again. Exposed and
+unit-tested.
+
+matchValue(vendor, value): order exact (value equals a current lob_cg label of the active
+dataset), normalized (normalizeOrg equal), alias (vendor_org_aliases by normalized),
+else fuzzy suggestions: score = max(tokenSetRatio, jaroWinkler) over the normalized
+forms of every active lob_cg label (both implemented in the service, no dependency;
+tokenSetRatio = 2 x shared tokens / (tokens a + tokens b); Jaro-Winkler standard with
+prefix scale 0.1); suggestions with score >= 0.80 sorted desc, top 3, NEVER auto-applied.
+A confirmed or manual mapping is kept across pulls; a value whose mapping method is exact
+or normalized is re-evaluated on every pull (a renamed label is caught), alias and
+confirmed ones are not.
+
+ingest(vendor, orgs, now): upsert vendor_org_values (first_seen, last_seen, people_count,
+run matchValue for rows without a kept mapping), replace vendor_org_people for that
+vendor. Called by vendorImport after each connector pull, before normalize.
+
+applyToDataset(datasetId): for every usage person_key in the dataset with NO people row
+and with a vendor_org_people row whose value has a lob_cg: INSERT a people row (person_key,
+email, display_name from the vendor, lob_cg, lob_cg_sort of that label from the dataset's
+existing people or lob_cg_map, region 'Unknown', sbl 'Unknown', person_type 'Unknown',
+origin 'vendor'), then set usage.matched for those keys. People rows from the extract are
+NEVER changed. normalize() calls applyToDataset at its end (no-op when the tables are
+empty, so fixtures are unaffected). datasets.get counts gain people_vendor.
+
+Routes (routes/vendorOrgs.js mounted at /api/vendor-orgs, settings.manage like
+/settings/lob-cg-map):
+GET /api/vendor-orgs?vendor= -> {rows: [{id, vendor, value, normalized, lob_cg,
+match_method, score, people_count, suggestions: [{lob_cg, score}], confirmed_by:
+{id, username} or null, last_seen_at}], lob_values: [{value, sort}], aliases: [{id, alias,
+lob_cg}], counts: {mapped, unmatched, people_unmatched}}
+PUT /api/vendor-orgs/:id {lob_cg: string | null, method?: 'fuzzy_confirmed' | 'manual'}
+-> row; null clears to unmapped (and re-evaluates exact/normalized next pull); a lob_cg
+not in the active dataset answers 400
+POST /api/vendor-orgs/aliases {alias, lob_cg} -> row (alias stored normalized; 409 dup)
+DELETE /api/vendor-orgs/aliases/:id
+GET /api/vendor-orgs/:id/people -> {rows: [{person_key, email, display_name, in_extract:
+bool, extract_lob_cg}]}
+POST /api/vendor-orgs/apply -> re-runs matchValue on unmapped rows and applyToDataset on
+the active dataset, rebuilds rollups (rollups.rebuildOrg), -> counts
+GET /api/vendor-orgs/export.csv
+Every mutation writes auth_events kind org_map_changed (detail: vendor, value, lob_cg,
+method) and broadcasts settings.changed {keys: ['vendor_orgs']}.
+
+### 16.5 Frontend (owner O)
+
+- Settings > Data source: a "Vendor connectors" panel under the Power BI panel: intro line
+  ("Pull usage straight from each vendor. Platforms without a connector keep the rows from
+  the last Power BI or CSV load."), shared controls (schedule time, auto promote, months
+  back, Pull now for every enabled connector with the same progress panel as Power BI,
+  now showing the vendor chip per event, last pull summary with the by_vendor table), then
+  one ConnectorCard per connector from GET /api/vendors: enabled toggle, status chip
+  (Not configured | Ready | Last pull ok | Last pull failed), fields from the contract
+  (Anthropic: API key SecretField, re-pull days, Advanced fold with base URL and version,
+  read-only history floor line "Data is available from 2026-01-01"), Test connection
+  (checklist rows like the Power BI one), Pull this connector only. Help text in two
+  sentences: who creates the Analytics key and where, and that the key needs
+  read:analytics (read:rbac_groups adds team mapping).
+- Settings > LOB-CG map: a second SectionCard "Vendor orgs" under the map: vendor filter
+  chips, counts line (mapped, unmatched, people without a LOB that a mapping would fix),
+  DataTable rows (vendor, value, people, mapping: a select of lob_values with the current
+  value, suggestion chips "Technology 0.91" that set the select, method chip, confirmed
+  by, last seen), Save per row (PUT), Clear, an Aliases fold (list, add alias -> LOB,
+  remove), "Apply mappings now" button (POST apply, toast with counts), CSV export.
+  People link opens a small Drawer listing the people behind a value with an
+  "in extract" chip and the extract LOB when different.
+- Data quality: the three new checks render like any other; evidence drawer unchanged.
+- Users page and User drawer: a person with origin 'vendor' shows a muted "LOB from
+  vendor org" chip (API: /api/users rows and userDetail carry origin).
+- Mocks: vendors.json, vendors-test.json, vendor-orgs.json, vendor-orgs-people.json.
+
+### 16.6 Tests and definition of done
+
+- tests/connectors.anthropic.test.js (M): a fake Anthropic server (express on port 0)
+  serving /v1/organizations/analytics/cost and /usage from a generated set of users,
+  models, products and days with limit paging, the 31-day and 2026-01-01 constraints
+  (400), one 410 on a replayed cursor, one 429, data_refreshed_at, rbac_groups and members;
+  asserts: problems() and test() steps on a missing key, 401 and a good key; pull window
+  slicing and pacing (calls at least 1,000 ms apart, faked clock allowed); join and
+  product summing (sum of CostUSD equals sum of amounts / 100, tokens equal); deleted user
+  fallback key; unattributed row; vendor_usage_detail rows per product; coverage figure;
+  end to end pull into a dataset with carry-over of the other platforms from the active
+  fixture (counts per platform equal the fixture's for github, openai, cowork), verdict,
+  promote; a second pull with the trailing window gives the same totals; 409 while
+  running; failure marks the dataset failed.
+- tests/orgCorrelation.test.js (N): normalizeOrg cases (TECH2, "Technology - Dept",
+  "Investment  Group (IG)"), exact/normalized/alias/fuzzy order, suggestions sorted with
+  scores and the 0.80 threshold, confirm and clear, ingest upsert and people replace,
+  applyToDataset creates vendor-origin people only for unmatched keys and never touches
+  extract rows, disagreement and unmatched checks, routes (settings.manage gate, 400 on an
+  unknown LOB, CSV), auth_events row.
+- Existing suites green; smoke-shapes gains /api/vendors, /api/vendor-orgs rows.
+- Frontend build green; screenshot QA light and dark of the connector panel (not
+  configured, after a failed test against a dead base URL, mocked ok), the progress
+  panel, the Vendor orgs section with suggestions and an alias; zero console errors; ASCII.
+- Live: pm2 restart; Settings shows the panel; Test connection against the real endpoint
+  with no key answers the first step failed with the vendor's error text. Nothing else can
+  be proven without a key; the fake server suite is the proof and the first real key is
+  the fix loop.
