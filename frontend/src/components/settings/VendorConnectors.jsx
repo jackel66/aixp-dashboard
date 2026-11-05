@@ -1,16 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RequirementsFold } from '../help/IntegrationBlocks.jsx';
-import DataState from '../DataState.jsx';
 import Button from '../ui/Button.jsx';
 import Chip from '../ui/Chip.jsx';
 import Dialog from '../ui/Dialog.jsx';
 import StatusChip from '../ui/StatusChip.jsx';
-import { SkeletonCard } from '../ui/Skeleton.jsx';
 import { useToast } from '../ui/Toast.jsx';
 import Card from '../charts/Card.jsx';
 import { SectionCard, Field, useSaver } from './shared.jsx';
 import { SecretField, ProgressPanel } from './DataSourceSection.jsx';
-import { useQuery } from '../../lib/query.js';
+import { TabPane } from '../ui/TabStrip.jsx';
 import { useLiveRefresh } from '../../lib/live.jsx';
 import { api, isMock } from '../../lib/api.js';
 import { count, money } from '../../lib/format.js';
@@ -260,7 +258,7 @@ function ConnectorCard({ c, s, last, busy, onPull }) {
   );
 }
 
-function Panel({ s, data, reload }) {
+function Panel({ s, data, reload, tab }) {
   const toast = useToast();
   const { save, saving } = useSaver();
   const base = {
@@ -340,7 +338,10 @@ function Panel({ s, data, reload }) {
 
   return (
     <>
-      <SectionCard id="vendors" title="Vendor connectors" caption="Pull usage straight from each vendor. Platforms without a connector keep the rows from the last Power BI or CSV load."
+      {progress && <ProgressPanel p={progress} onDismiss={() => setProgress(null)} stages={STAGES} source="the vendors" />}
+      <TabPane id="vendors" idPrefix="ds" active={tab === 'vendors'}>
+      <div className="stack-32">
+      <SectionCard id="vendors" title="Vendor pulls" caption="Pull usage straight from each vendor. Platforms without a connector keep the rows from the last Power BI or CSV load."
         dirty={dirty} saving={saving} disabled={!valid}
         onSave={() => save(() => api.put('/settings', { patch }), 'Vendor settings saved')}>
         <div className="grid gap-x-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
@@ -356,8 +357,6 @@ function Panel({ s, data, reload }) {
           {!dirty && enabled.length === 0 && <span className="t-small text-muted">Enable and configure a connector to pull.</span>}
         </div>
       </SectionCard>
-
-      {progress && <ProgressPanel p={progress} onDismiss={() => setProgress(null)} stages={STAGES} source="the vendors" />}
 
       <Card title="Last vendor pull">
         {data.last_pull_at ? (
@@ -392,7 +391,13 @@ function Panel({ s, data, reload }) {
         {last && last.error && <p role="alert" className="m-0" style={{ marginTop: 8, color: 'var(--fail)' }}>{last.error}</p>}
       </Card>
 
-      {connectors.map((c) => <ConnectorCard key={c.id} c={c} s={s} last={last} busy={busy} onPull={(ids) => setAsk(ids)} />)}
+      </div>
+      </TabPane>
+      {connectors.map((c) => (
+        <TabPane key={c.id} id={c.id} idPrefix="ds" active={tab === c.id}>
+          <ConnectorCard c={c} s={s} last={last} busy={busy} onPull={(ids) => setAsk(ids)} />
+        </TabPane>
+      ))}
 
       <Dialog open={ask !== null} onClose={() => setAsk(null)} title="Pull from vendors?"
         footer={(<><Button variant="secondary" onClick={() => setAsk(null)}>Cancel</Button><Button onClick={() => startPull(ask || [])}>Pull now</Button></>)}>
@@ -402,7 +407,7 @@ function Panel({ s, data, reload }) {
   );
 }
 
-export default function VendorConnectors({ s }) {
-  const q = useQuery('/vendors', {}, { events: ['import.*', 'settings.changed', 'dataset.*'] });
-  return <DataState q={q} skeleton={<SkeletonCard height={200} />}>{(data) => <Panel s={s} data={data} reload={q.reload} />}</DataState>;
+// Rendered by DataSourceSection, which loads /vendors and owns the tab strip.
+export default function VendorPanes({ s, data, reload, tab }) {
+  return <Panel s={s} data={data} reload={reload} tab={tab} />;
 }

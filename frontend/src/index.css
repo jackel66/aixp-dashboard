@@ -267,3 +267,9 @@ button { font: inherit; }
   .help-rail { display: none; }
   .help-select { display: block; }
 }
+
+/* Tab strip: horizontal tabs above a set of panes (Settings > Data source). */
+.tab-strip { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+.tab { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0; }
+.tab:hover { color: var(--ink); background: var(--bg-2); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }

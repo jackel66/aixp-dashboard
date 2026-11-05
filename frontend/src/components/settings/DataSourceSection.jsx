@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RequirementsFold } from '../help/IntegrationBlocks.jsx';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import DataState from '../DataState.jsx';
 import Button from '../ui/Button.jsx';
 import Chip from '../ui/Chip.jsx';
@@ -15,7 +15,9 @@ import { useQuery } from '../../lib/query.js';
 import { useLiveRefresh } from '../../lib/live.jsx';
 import { api, isMock } from '../../lib/api.js';
 import { count, dateLong } from '../../lib/format.js';
-import VendorConnectors from './VendorConnectors.jsx';
+import { platformName } from '../../lib/platforms.js';
+import TabStrip, { TabPane } from '../ui/TabStrip.jsx';
+import VendorPanes from './VendorConnectors.jsx';
 
 const MODES = [
   { value: 'fixture', label: 'Fixture' },
@@ -117,7 +119,7 @@ export function ProgressPanel({ p, onDismiss, stages = STAGES, source = 'Power B
   );
 }
 
-function Form({ s, status, reloadStatus }) {
+function Form({ s, status, reloadStatus, active }) {
   const toast = useToast();
   const { save, saving } = useSaver();
   const base = {
@@ -230,6 +232,9 @@ function Form({ s, status, reloadStatus }) {
   if (test) (test.tables || []).forEach((t) => { resultByKey[t.key] = t; });
 
   return (
+    <>
+    {on && progress && <ProgressPanel p={progress} onDismiss={() => setProgress(null)} />}
+    <TabPane id="powerbi" idPrefix="ds" active={active}>
     <div className="stack-32">
       <SectionCard id="source" title="Data source" caption="Choose where the dashboard reads its usage rows from. Fixture uses generated sample data. Power BI pulls the real semantic model."
         dirty={dirty} saving={saving} disabled={!valid}
@@ -303,7 +308,6 @@ function Form({ s, status, reloadStatus }) {
       </SectionCard>
 
       {on && test && <Card title="Connection test" caption={test.ok ? 'Every check passed.' : 'One or more checks failed.'}><Checklist r={test} /></Card>}
-      {on && progress && <ProgressPanel p={progress} onDismiss={() => setProgress(null)} />}
       {on && (
         <Card title="Last pull">
           {status.last_pull_at ? (
@@ -323,18 +327,45 @@ function Form({ s, status, reloadStatus }) {
         footer={(<><Button variant="secondary" onClick={() => setAsk(false)}>Cancel</Button><Button onClick={startPull}>Pull now</Button></>)}>
         <p className="m-0">This reads {f.months_back} months of usage plus people and lookups from the chosen dataset and builds a new dataset. {f.auto_promote ? 'If verification does not fail it becomes the current dataset and the one in use is archived.' : 'It stays staged until you promote it from Data quality.'} A full pull can take several minutes.</p>
       </Dialog>
-
-      <VendorConnectors s={s} />
     </div>
+    </TabPane>
+    </>
+  );
+}
+
+// One tab per source: Power BI, the shared vendor pull settings, then one per connector.
+// Every pane stays mounted, so unsaved edits and a running pull survive a tab switch.
+function Body({ s, status, reloadStatus, vendors, reloadVendors }) {
+  const [params, setParams] = useSearchParams();
+  const connectors = vendors.connectors || [];
+  const tabs = [
+    { id: 'powerbi', label: 'Power BI', dot: s['powerbi.enabled'] ? 'ok' : 'faint', title: s['powerbi.enabled'] ? 'Power BI mode is on' : 'Fixture mode' },
+    { id: 'vendors', label: 'Vendor pulls', dot: null, title: 'Schedule and Pull now for every connector' },
+    ...connectors.map((c) => ({ id: c.id, label: platformName(c.platform), dot: !c.configured ? 'warn' : c.enabled ? 'ok' : 'faint', title: c.label + ': ' + (!c.configured ? 'not configured' : c.enabled ? 'enabled' : 'configured, switched off') }))
+  ];
+  const wanted = params.get('tab');
+  const tab = tabs.some((t) => t.id === wanted) ? wanted : 'powerbi';
+  const go = (id) => { const p = new URLSearchParams(params); p.set('tab', id); setParams(p, { replace: true }); };
+  return (
+    <>
+      <TabStrip label="Data sources" tabs={tabs} value={tab} onChange={go} idPrefix="ds" />
+      <Form s={s} status={status} reloadStatus={reloadStatus} active={tab === 'powerbi'} />
+      <VendorPanes s={s} data={vendors} reload={reloadVendors} tab={tab} />
+    </>
   );
 }
 
 export default function DataSourceSection() {
   const q = useQuery('/settings', {});
   const st = useQuery('/powerbi/status', {}, { events: ['import.*', 'settings.changed', 'dataset.*'] });
+  const vq = useQuery('/vendors', {}, { events: ['import.*', 'settings.changed', 'dataset.*'] });
   return (
     <DataState q={q} skeleton={<SkeletonCard height={320} />}>
-      {(s) => <DataState q={st} skeleton={<SkeletonCard height={320} />}>{(status) => <Form s={s} status={status} reloadStatus={st.reload} />}</DataState>}
+      {(s) => <DataState q={st} skeleton={<SkeletonCard height={320} />}>
+        {(status) => <DataState q={vq} skeleton={<SkeletonCard height={200} />}>
+          {(vendors) => <Body s={s} status={status} reloadStatus={st.reload} vendors={vendors} reloadVendors={vq.reload} />}
+        </DataState>}
+      </DataState>}
     </DataState>
   );
 }
